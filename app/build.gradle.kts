@@ -11,7 +11,7 @@ plugins {
 android {
     namespace = "io.github.lumiagg.gestureevo"
     compileSdk = 36
-    ndkVersion = "27.0.12077973"
+    // ndkVersion = "27.0.12077973"
 
     defaultConfig {
         applicationId = "io.github.lumiagg.gestureevo"
@@ -27,11 +27,11 @@ android {
             abiFilters += listOf("arm64-v8a")
         }
 
-        externalNativeBuild {
-            cmake {
-                cppFlags += "-std=c++17"
-            }
-        }
+//        externalNativeBuild {
+//            cmake {
+//                cppFlags += "-std=c++17"
+//            }
+//        }
     }
 
     val signingEnvironment = listOf(
@@ -73,12 +73,12 @@ android {
         viewBinding = true
         aidl = true
     }
-    externalNativeBuild {
-        cmake {
-            path = file("src/main/cpp/CMakeLists.txt")
-            version = "3.22.1"
-        }
-    }
+//    externalNativeBuild {
+//        cmake {
+//            path = file("src/main/cpp/CMakeLists.txt")
+//            version = "3.22.1"
+//        }
+//    }
     sourceSets {
         getByName("main") {
             aidl.srcDirs("src/main/aidl")

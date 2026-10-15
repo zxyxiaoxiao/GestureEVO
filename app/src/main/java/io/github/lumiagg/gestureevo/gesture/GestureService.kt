@@ -80,6 +80,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
             RecentAppsRecorder.initLauncherPackagesInDB(applicationContext)
             initShizukuService(applicationContext)
         }
+        // === CUSTOM EXTENSION START ===
+        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.init(this)
+        // === CUSTOM EXTENSION END ===
     }
 
     private fun initReceiver() {
@@ -119,6 +122,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
         }
         CurrentPackageProvider.clearService()
         io.github.lumiagg.gestureevo.pin.PinDragCancelOverlay.hide(notify = false)
+        // === CUSTOM EXTENSION START ===
+        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.destroy()
+        // === CUSTOM EXTENSION END ===
         job.cancel()
     }
 
