@@ -77,6 +77,13 @@
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <!-- === CUSTOM EXTENSION START === -->
+            <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/floatingBallCard" android:layout_width="match_parent" android:layout_marginTop="@dimen/settings_card_spacing" app:settingsCardTitle="悬浮球设置" app:settingsCardSummary="设置悬浮球图标、弹出菜单线条及隐藏规则" app:settingsCardExpanded="false" android:layout_height="wrap_content">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/floating_ball_entry_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="悬浮球设置" app:settingsRowSummary="自定义悬浮球大小、样式、线条与自动隐藏等" />
+                </LinearLayout>
+            </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
+            <!-- === CUSTOM EXTENSION END === -->
             <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/pinPoolCard" android:layout_width="match_parent" android:layout_marginTop="@dimen/settings_card_spacing" app:settingsCardTitle="@string/inspire_settings_pin_pool_settings_title" app:settingsCardSummary="@string/inspire_settings_pin_pool_settings_description" app:settingsCardExpanded="false" android:layout_height="wrap_content">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/pin_pool_mode_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_pin_pool_mode_title" app:settingsRowSummary="@string/inspire_settings_pin_pool_mode_desc">

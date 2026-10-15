@@ -4,6 +4,7 @@
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
@@ -247,6 +248,20 @@
             android:name=".utils.TempDndNotificationReceiver"
             android:enabled="true"
             android:exported="false" />
+        <!-- === CUSTOM EXTENSION START === -->
+        <activity
+            android:name=".custom.ball.ui.FloatingBallSettingsActivity"
+            android:exported="false" />
+        <service
+            android:name=".custom.ball.FloatingBallService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating ball overlay manager" />
+        </service>
+        <!-- === CUSTOM EXTENSION END === -->
     </application>
 
 </manifest>

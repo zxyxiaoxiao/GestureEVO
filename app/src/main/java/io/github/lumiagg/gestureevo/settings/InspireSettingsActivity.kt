@@ -226,6 +226,11 @@ class InspireSettingsActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
+        // === CUSTOM EXTENSION START ===
+        binding.floatingBallEntryRow.setOnClickListener {
+            startActivity(Intent(this, io.github.lumiagg.gestureevo.custom.ball.ui.FloatingBallSettingsActivity::class.java))
+        }
+        // === CUSTOM EXTENSION END ===
         // OCR-priority switch listener
         binding.ocrPrioritySwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
