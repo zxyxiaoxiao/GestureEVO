@@ -142,10 +142,12 @@ class FloatingBallPreviewView @JvmOverloads constructor(
     }
 
     private fun drawBallIconPreview(canvas: Canvas, cx: Float, cy: Float) {
-        val ballAlpha = config.getIconAlpha()
         val ballSizeDp = config.getActualSizeDp()
-        val radius = (ballSizeDp.dp2px) / 2f
+        drawBallAt(canvas, cx, cy, (ballSizeDp.dp2px) / 2f)
+    }
 
+    private fun drawBallAt(canvas: Canvas, cx: Float, cy: Float, radius: Float = (config.getActualSizeDp().dp2px) / 2f) {
+        val ballAlpha = config.getIconAlpha()
         tempRect.set(cx - radius, cy - radius, cx + radius, cy + radius)
         val corner = minOf(radius, config.cornerRadiusDp.dp2px * (config.sizePercent / 100f))
 
@@ -185,60 +187,72 @@ class FloatingBallPreviewView @JvmOverloads constructor(
     }
 
     private fun drawLineStylePreview(canvas: Canvas, w: Float, h: Float) {
-        // 先在左侧绘制基准悬浮球
-        val ballRadius = 20f.dp2px
-        val startX = 40f.dp2px
-        val startY = h / 2f
-        canvas.drawCircle(startX, startY, ballRadius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            alpha = (config.getIconAlpha() * 255).toInt()
-        })
-        canvas.drawCircle(startX, startY, ballRadius, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            color = Color.LTGRAY
-            strokeWidth = 2f.dp2px
-        })
+        // 微缩屏幕框架尺寸计算
+        val pad = 16f.dp2px
+        val maxW = w - pad * 2
+        val maxH = h - pad * 2
+        val aspect = screenRealWidth.toFloat() / maxOf(1, screenRealHeight).toFloat()
+        var viewW = maxW
+        var viewH = viewW / aspect
+        if (viewH > maxH) {
+            viewH = maxH
+            viewW = viewH * aspect
+        }
+        val frameLeft = (w - viewW) / 2f
+        val frameTop = (h - viewH) / 2f
+        val frameRight = frameLeft + viewW
+        val frameBottom = frameTop + viewH
 
-        // 根据宽度百分比 (0~100%) 和高度百分比 (0~100%) 计算预览线条尺寸
-        val maxAvailableW = w - startX - 50f.dp2px
-        val targetLineW = maxAvailableW * (config.lineWidthPercent.coerceIn(1, 100) / 100f)
-        val maxAvailableH = h * 0.6f
-        val targetLineH = maxAvailableH * (config.lineHeightPercent.coerceIn(1, 100) / 100f)
+        // 绘制微缩屏幕边框
+        screenFramePaint.color = Color.parseColor("#44888888")
+        canvas.drawRoundRect(frameLeft, frameTop, frameRight, frameBottom, 12f.dp2px, 12f.dp2px, screenFramePaint)
 
-        val endX = startX + targetLineW
-        val endY = startY - targetLineH / 2f
+        // 计算屏幕右侧边缘触发区域的尺寸与位置
+        val triggerH = (frameBottom - frameTop) * (config.lineHeightPercent.coerceIn(5, 100) / 100f)
+        val triggerW = 4f.dp2px + (viewW * 0.18f) * (config.lineWidthPercent.coerceIn(5, 100) / 100f)
+        val triggerTop = frameTop + (frameBottom - frameTop - triggerH) / 2f
+        val triggerBottom = triggerTop + triggerH
+        val triggerRight = frameRight
+        val triggerLeft = triggerRight - triggerW
 
-        // 线条样式
-        linePaint.strokeWidth = 4f.dp2px
+        tempRect.set(triggerLeft, triggerTop, triggerRight, triggerBottom)
+
+        // 触发区域背景画笔
         val baseColor = config.lineColor
         val alphaVal = (config.getLineAlpha() * 255).toInt()
-
-        if (config.lineGradientEnabled) {
-            val endColor = Color.argb(0, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
-            linePaint.shader = LinearGradient(startX, startY, endX, endY, baseColor, endColor, Shader.TileMode.CLAMP)
-        } else {
-            linePaint.shader = null
-            linePaint.color = baseColor
-        }
-        linePaint.alpha = alphaVal
-
-        if (config.lineIsDotted) {
-            linePaint.pathEffect = DashPathEffect(floatArrayOf(12f.dp2px, 8f.dp2px), 0f)
-        } else {
-            linePaint.pathEffect = null
-        }
-
-        // 绘制折线/曲线展开线条
-        linePath.reset()
-        linePath.moveTo(startX, startY)
-        linePath.quadTo((startX + endX) / 2f, startY, endX, endY)
-        canvas.drawPath(linePath, linePaint)
-
-        // 终点菜单指示标记
-        canvas.drawCircle(endX, endY, 6f.dp2px, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = baseColor
+        val triggerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            if (config.lineGradientEnabled) {
+                val startC = baseColor
+                val endC = Color.argb(0, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
+                shader = LinearGradient(triggerRight, triggerTop, triggerLeft, triggerTop, startC, endC, Shader.TileMode.CLAMP)
+            } else {
+                shader = null
+                color = baseColor
+            }
             alpha = alphaVal
-        })
+        }
+        canvas.drawRoundRect(tempRect, 4f.dp2px, 4f.dp2px, triggerPaint)
+
+        // 触发区域边框（实线 / 虚线）
+        val triggerBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f.dp2px
+            color = baseColor
+            alpha = (alphaVal * 0.8f).toInt()
+            if (config.lineIsDotted) {
+                pathEffect = DashPathEffect(floatArrayOf(6f.dp2px, 4f.dp2px), 0f)
+            } else {
+                pathEffect = null
+            }
+        }
+        canvas.drawRoundRect(tempRect, 4f.dp2px, 4f.dp2px, triggerBorderPaint)
+
+        // 在触发区域旁绘制悬浮球，表现拖拽出悬浮球的效果
+        val ballSizeOnScreen = 16f.dp2px
+        val ballCx = triggerLeft - ballSizeOnScreen
+        val ballCy = (triggerTop + triggerBottom) / 2f
+        drawBallAt(canvas, ballCx, ballCy, ballSizeOnScreen / 2f)
     }
 
     private fun drawScreenPosPreview(canvas: Canvas, w: Float, h: Float) {

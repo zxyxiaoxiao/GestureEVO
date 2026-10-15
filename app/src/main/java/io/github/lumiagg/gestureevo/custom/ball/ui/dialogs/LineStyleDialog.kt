@@ -39,7 +39,7 @@ object LineStyleDialog {
         val btnCancel = dialogView.findViewById<MaterialButton>(R.id.btnCancel)
         val btnConfirm = dialogView.findViewById<MaterialButton>(R.id.btnConfirm)
 
-        tvTitle.text = "菜单线条样式"
+        tvTitle.text = "触发区域样式"
         btnConfirm.text = "应用"
         previewView.mode = FloatingBallPreviewView.PreviewMode.LINE_STYLE
         previewView.config = workingConfig

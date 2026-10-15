@@ -252,6 +252,9 @@
         <activity
             android:name=".custom.ball.ui.FloatingBallSettingsActivity"
             android:exported="false" />
+        <activity
+            android:name=".custom.ball.ui.FloatingBallGestureSettingsActivity"
+            android:exported="false" />
         <service
             android:name=".custom.ball.FloatingBallService"
             android:enabled="true"

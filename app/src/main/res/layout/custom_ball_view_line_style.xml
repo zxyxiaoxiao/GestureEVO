@@ -16,7 +16,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="线条基础颜色"
+            android:text="触发区域颜色"
             android:textAppearance="?attr/textAppearanceBodyMedium" />
 
         <View
@@ -57,7 +57,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="线条末端平滑半透明渐隐"
+                android:text="触发区域向内平滑渐隐"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textColor="?attr/colorOutline" />
         </LinearLayout>

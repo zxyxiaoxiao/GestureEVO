@@ -22,6 +22,10 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.core.app.NotificationCompat
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceInspireEvent
+import io.github.lumiagg.gestureevo.gesture.InspireEvent
+import io.github.lumiagg.gestureevo.gesture.TriggerSide
+import io.github.lumiagg.gestureevo.inspire.InspireContentActivity
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -240,13 +244,16 @@ class FloatingBallService : Service() {
 
         val view = FloatingBallView(this, config).apply {
             onActionTrigger = { actionLink -> dispatchAction(actionLink) }
-            onDragMove = { dx, dy -> updatePositionDelta(dx, dy) }
-            onDragReleased = {
-                if (config.autoSnapToEdge) {
-                    snapToEdge()
-                } else {
-                    saveCurrentPosition()
-                }
+            onRequestFullScreenLayout = { isFullScreen ->
+                switchWindowLayout(isFullScreen)
+            }
+            onDragSelectCompleted = { selectRect ->
+                handleDragSelectCompleted(selectRect)
+            }
+            onPositionSaved = { newX, newY ->
+                config.posX = newX
+                config.posY = newY
+                config.save(this@FloatingBallService)
             }
         }
         this.ballView = view
@@ -258,6 +265,50 @@ class FloatingBallService : Service() {
             Log.d(TAG, "FloatingBall attached at (${params.x}, ${params.y})")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to attach FloatingBall", e)
+        }
+    }
+
+    private fun switchWindowLayout(isFullScreen: Boolean) {
+        val params = layoutParams ?: return
+        val view = ballView ?: return
+        val wm = windowManager ?: return
+
+        if (isFullScreen) {
+            params.width = WindowManager.LayoutParams.MATCH_PARENT
+            params.height = WindowManager.LayoutParams.MATCH_PARENT
+            params.x = 0
+            params.y = 0
+        } else {
+            val sizePx = config.getActualSizeDp().dp2px.toInt()
+            params.width = sizePx
+            params.height = sizePx
+            params.x = config.posX
+            params.y = config.posY
+        }
+
+        try {
+            wm.updateViewLayout(view, params)
+        } catch (e: Exception) {
+            Log.e(TAG, "switchWindowLayout error", e)
+        }
+    }
+
+    private fun handleDragSelectCompleted(selectRect: android.graphics.Rect) {
+        val screenW = ScreenUtil.getScreenWidth(this)
+        val side = if (selectRect.centerX() < screenW / 2) TriggerSide.LEFT else TriggerSide.RIGHT
+
+        CoroutineScope(Dispatchers.Main).launch {
+            try {
+                // 优先广播区域提取事件供 DOM 树和 OCR 处理
+                produceInspireEvent(InspireEvent(rect = selectRect, side = side))
+                // 直接调起本软件强大的 InspireContentActivity 界面
+                InspireContentActivity.start(this@FloatingBallService)
+            } catch (e: Exception) {
+                Log.e(TAG, "handleDragSelectCompleted error", e)
+                try {
+                    InspireContentActivity.start(this@FloatingBallService)
+                } catch (_: Exception) {}
+            }
         }
     }
 

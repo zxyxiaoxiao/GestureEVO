@@ -8,25 +8,33 @@ import android.graphics.BitmapFactory
 import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.DashPathEffect
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.animation.OvershootInterpolator
 import android.widget.FrameLayout
+import androidx.core.content.ContextCompat
+import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.VibratorUtils
 import io.github.lumiagg.gestureevo.utils.dp2px
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.min
 
 /**
- * 类似 FV 悬浮球体验的交互 View
- * 具备精致圆形/圆角绘制、自定义图标渲染、微位移手势指示、长按拖动以及单击/双击区分逻辑
+ * 悬浮球核心视图：支持全屏任意位置拖动、黄色十字指针标四角自适应跟随与矩形框选屏幕取词
  */
 @SuppressLint("ViewConstructor")
 class FloatingBallView(
@@ -34,12 +42,11 @@ class FloatingBallView(
     private var config: FloatingBallConfig
 ) : FrameLayout(context) {
 
-    // 动作触发回调
+    // 动作与布局切换回调
     var onActionTrigger: ((actionLink: String) -> Unit)? = null
-    // 拖动偏移回调（用于更新 WindowManager 坐标）
-    var onDragMove: ((deltaX: Float, deltaY: Float) -> Unit)? = null
-    // 拖动松手回调（触发贴边动画）
-    var onDragReleased: (() -> Unit)? = null
+    var onRequestFullScreenLayout: ((isFullScreen: Boolean) -> Unit)? = null
+    var onDragSelectCompleted: ((rect: Rect) -> Unit)? = null
+    var onPositionSaved: ((x: Int, y: Int) -> Unit)? = null
 
     // 绘制画笔
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -55,29 +62,50 @@ class FloatingBallView(
     }
     private val imagePaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
+    // 黄色十字准星与框选画笔
+    private val selectRectStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f.dp2px
+        color = Color.parseColor("#FFB300") // 经典金黄琥珀色
+        pathEffect = DashPathEffect(floatArrayOf(10f.dp2px, 6f.dp2px), 0f)
+    }
+    private val selectRectFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.argb(40, 255, 179, 0) // 半透明淡黄色
+    }
+
+    // 触发区域线条画笔
+    private val edgeTriggerLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+
+    private var pointerDrawable: Drawable? = null
     private var customBitmap: Bitmap? = null
     private var customShader: BitmapShader? = null
     private val drawRect = RectF()
+    private val selectionRectF = RectF()
 
-    // 交互状态
+    // 触控与状态
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop.toFloat()
-    private val swipeThreshold = 28f.dp2px
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var downRawX = 0f
     private var downRawY = 0f
-    private var lastRawX = 0f
-    private var lastRawY = 0f
+    private var currentTouchRawX = 0f
+    private var currentTouchRawY = 0f
 
-    private var isDragging = false
-    private var isSwiping = false
+    // 状态标记
+    private var isDraggingOrSelecting = false
+    private var isFullScreenMode = false
+    private var pointerCenterX = 0f
+    private var pointerCenterY = 0f
 
-    // 悬浮球本体在原位的弹性微位移
+    // 微位移与缩放动画
     private var ballOffsetX = 0f
     private var ballOffsetY = 0f
     private var currentScale = 1.0f
 
-    // 双击检测计时器与状态
+    // 双击检测
     private var clickCount = 0
     private val doubleClickTimeout = 220L
     private val singleClickRunnable = Runnable {
@@ -86,19 +114,16 @@ class FloatingBallView(
         onActionTrigger?.invoke(config.clickAction)
     }
 
-    // 长按检测计时器（380ms 无大位移进入拖动位置模式）
-    private val longPressTimeout = 380L
+    // 长按判定
+    private val longPressTimeout = 320L
     private val longPressRunnable = Runnable {
-        isDragging = true
         VibratorUtils.vibrator(context, false)
-        animateScale(1.15f)
-        if (config.longPressAction.isNotBlank()) {
-            onActionTrigger?.invoke(config.longPressAction)
-        }
+        startFullScreenDragSelection()
     }
 
     init {
         setWillNotDraw(false)
+        pointerDrawable = ContextCompat.getDrawable(context, R.drawable.pointer)
         applyConfigParams()
     }
 
@@ -114,7 +139,6 @@ class FloatingBallView(
         borderPaint.strokeWidth = config.borderWidthDp.dp2px
         borderPaint.color = config.borderColor
 
-        // 加载自定义图标图片
         if (config.iconStyleType == 1 && config.customIconPath.isNotBlank()) {
             loadCustomBitmap(config.customIconPath)
         } else {
@@ -142,21 +166,31 @@ class FloatingBallView(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val cx = width / 2f + ballOffsetX
-        val cy = height / 2f + ballOffsetY
+
+        if (!isFullScreenMode) {
+            // 普通静止形态：绘制悬浮球本体及边缘触发线提示
+            val cx = width / 2f + ballOffsetX
+            val cy = height / 2f + ballOffsetY
+            drawBallAt(canvas, cx, cy)
+        } else {
+            // 全屏拖拽框选形态：绘制选区矩形、悬浮球本体与黄色十字指针标
+            drawDragSelectionMode(canvas)
+        }
+    }
+
+    private fun drawBallAt(canvas: Canvas, cx: Float, cy: Float) {
         val strokeW = config.borderWidthDp.dp2px
-        val halfW = (width / 2f - strokeW / 2f - 2f.dp2px) * currentScale
-        val halfH = (height / 2f - strokeW / 2f - 2f.dp2px) * currentScale
-        val radius = minOf(halfW, halfH)
+        val ballRadius = (config.getActualSizeDp().dp2px) / 2f - strokeW / 2f
+        val radius = max(8f, ballRadius * currentScale)
 
         drawRect.set(cx - radius, cy - radius, cx + radius, cy + radius)
         val cornerRadius = minOf(radius, config.cornerRadiusDp.dp2px * currentScale)
 
-        // 绘制背景
+        // 绘制悬浮球底色
         backgroundPaint.color = Color.argb(220, 245, 245, 248)
         canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, backgroundPaint)
 
-        // 自定义图片渲染
+        // 绘制自定义图片或预设内芯
         val shader = customShader
         val bmp = customBitmap
         if (config.iconStyleType == 1 && shader != null && bmp != null) {
@@ -169,7 +203,6 @@ class FloatingBallView(
             shader.setLocalMatrix(matrix)
             canvas.drawRoundRect(drawRect, cornerRadius, cornerRadius, imagePaint)
         } else {
-            // 预设圆形模板中心呼吸感圆核（受内部占比缩放）
             val innerRatio = (config.innerRatioPercent.coerceIn(0, 100)) / 100f
             val coreRadius = radius * 0.42f * innerRatio
             if (coreRadius > 0f) {
@@ -183,16 +216,114 @@ class FloatingBallView(
         }
     }
 
+    private fun drawDragSelectionMode(canvas: Canvas) {
+        val screenW = width.toFloat()
+        val screenH = height.toFloat()
+
+        // 1. 计算悬浮球本体在屏幕上的坐标
+        val ballCx = currentTouchRawX
+        val ballCy = currentTouchRawY
+
+        // 2. 智能计算黄色十字准星指针的四角吸附坐标（隐形正方形四角算法）
+        calculateAdaptivePointerPosition(ballCx, ballCy, screenW, screenH)
+
+        // 3. 计算选区矩形（从按下起始点 downRaw 到当前十字指针中心）
+        val left = min(downRawX, pointerCenterX)
+        val top = min(downRawY, pointerCenterY)
+        val right = max(downRawX, pointerCenterX)
+        val bottom = max(downRawY, pointerCenterY)
+        selectionRectF.set(left, top, right, bottom)
+
+        // 如果形成了较明显的矩形，绘制黄色半透明背景与黄色虚线边框
+        if (selectionRectF.width() > 12f.dp2px || selectionRectF.height() > 12f.dp2px) {
+            canvas.drawRoundRect(selectionRectF, 6f.dp2px, 6f.dp2px, selectRectFillPaint)
+            canvas.drawRoundRect(selectionRectF, 6f.dp2px, 6f.dp2px, selectRectStrokePaint)
+        }
+
+        // 4. 绘制悬浮球本体
+        drawBallAt(canvas, ballCx, ballCy)
+
+        // 5. 绘制黄色“+”号十字准星指针标（使用 R.drawable.pointer）
+        val pSize = 34f.dp2px
+        val pLeft = (pointerCenterX - pSize / 2f).toInt()
+        val pTop = (pointerCenterY - pSize / 2f).toInt()
+        pointerDrawable?.let { d ->
+            d.setBounds(pLeft, pTop, (pLeft + pSize).toInt(), (pTop + pSize).toInt())
+            d.draw(canvas)
+        }
+    }
+
+    /**
+     * 指针位置自适应四角算法（保证和悬浮球处于固定距离的隐形正方形四角，绝不远离，贴近屏幕边缘自动切换）
+     */
+    private fun calculateAdaptivePointerPosition(
+        ballCx: Float,
+        ballCy: Float,
+        screenW: Float,
+        screenH: Float
+    ) {
+        val ballRadius = (config.getActualSizeDp().dp2px) / 2f
+        val offsetDist = ballRadius + 22f.dp2px
+        val pointerHalfSize = 17f.dp2px
+        val statusBarH = ScreenUtil.getStatusBarHeight(context).toFloat()
+
+        // 1. 水平四角判定（左侧 vs 右侧）：
+        // 向左拖拽（ballCx < downRawX）时指针保持在左上角（样图效果）；
+        // 当悬浮球重新拖拽到屏幕右侧时，指针自动实时切换到右上角；若右侧超出屏幕边缘则安全贴靠。
+        val isMovingLeft = (ballCx < downRawX - 8f.dp2px)
+        val isNearRightEdge = (ballCx >= screenW - ballRadius - 48f.dp2px)
+        val preferLeft = isMovingLeft && !isNearRightEdge
+
+        val cornerX = if (preferLeft) {
+            if (ballCx - offsetDist - pointerHalfSize >= 4f.dp2px) {
+                ballCx - offsetDist
+            } else {
+                ballCx + offsetDist
+            }
+        } else {
+            if (ballCx + offsetDist + pointerHalfSize <= screenW - 4f.dp2px) {
+                ballCx + offsetDist
+            } else {
+                (screenW - pointerHalfSize - 4f.dp2px).coerceAtLeast(ballCx)
+            }
+        }
+
+        // 2. 垂直四角判定（上方 vs 下方）：
+        // 默认偏向上方；若上方超出状态栏，自动实时切换到下方
+        val canPlaceTop = (ballCy - offsetDist - pointerHalfSize >= statusBarH + 4f.dp2px)
+        val canPlaceBottom = (ballCy + offsetDist + pointerHalfSize <= screenH - 8f.dp2px)
+
+        val cornerY = if (canPlaceTop) {
+            ballCy - offsetDist
+        } else if (canPlaceBottom) {
+            ballCy + offsetDist
+        } else {
+            ballCy - offsetDist
+        }
+
+        pointerCenterX = cornerX.coerceIn(pointerHalfSize + 2f.dp2px, screenW - pointerHalfSize - 2f.dp2px)
+        pointerCenterY = cornerY.coerceIn(statusBarH + pointerHalfSize + 2f.dp2px, screenH - pointerHalfSize - 2f.dp2px)
+    }
+
+    private fun startFullScreenDragSelection() {
+        if (!isFullScreenMode) {
+            isFullScreenMode = true
+            isDraggingOrSelecting = true
+            currentScale = 1.15f
+            onRequestFullScreenLayout?.invoke(true)
+            invalidate()
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downRawX = event.rawX
                 downRawY = event.rawY
-                lastRawX = event.rawX
-                lastRawY = event.rawY
-                isDragging = false
-                isSwiping = false
+                currentTouchRawX = event.rawX
+                currentTouchRawY = event.rawY
+                isDraggingOrSelecting = false
 
                 mainHandler.postDelayed(longPressRunnable, longPressTimeout)
                 return true
@@ -203,24 +334,16 @@ class FloatingBallView(
                 val dy = event.rawY - downRawY
                 val dist = hypot(dx, dy)
 
-                if (!isDragging) {
+                currentTouchRawX = event.rawX
+                currentTouchRawY = event.rawY
+
+                if (!isFullScreenMode) {
                     if (dist > touchSlop) {
                         mainHandler.removeCallbacks(longPressRunnable)
-                        isSwiping = true
-
-                        val maxOffset = 12f.dp2px
-                        val factor = minOf(1.0f, dist / (swipeThreshold * 2f))
-                        val angle = kotlin.math.atan2(dy, dx)
-                        ballOffsetX = (factor * maxOffset * kotlin.math.cos(angle))
-                        ballOffsetY = (factor * maxOffset * kotlin.math.sin(angle))
-                        invalidate()
+                        startFullScreenDragSelection()
                     }
                 } else {
-                    val deltaX = event.rawX - lastRawX
-                    val deltaY = event.rawY - lastRawY
-                    lastRawX = event.rawX
-                    lastRawY = event.rawY
-                    onDragMove?.invoke(deltaX, deltaY)
+                    invalidate()
                 }
                 return true
             }
@@ -228,18 +351,46 @@ class FloatingBallView(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 mainHandler.removeCallbacks(longPressRunnable)
 
-                if (isDragging) {
-                    isDragging = false
-                    animateScale(1.0f)
-                    onDragReleased?.invoke()
-                } else {
-                    resetBallOffset()
+                if (isFullScreenMode) {
+                    // 全屏拖拽/框选完成
+                    currentScale = 1.0f
+                    val left = min(downRawX, pointerCenterX)
+                    val top = min(downRawY, pointerCenterY)
+                    val right = max(downRawX, pointerCenterX)
+                    val bottom = max(downRawY, pointerCenterY)
+                    val rectW = right - left
+                    val rectH = bottom - top
 
+                    // 如果形成了有效选区框（宽高均大于 15dp），触发划词提取取词！
+                    if (rectW >= 15f.dp2px && rectH >= 15f.dp2px) {
+                        val selectRect = Rect(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+                        VibratorUtils.vibrator(context, false)
+                        onDragSelectCompleted?.invoke(selectRect)
+                    }
+
+                    // 贴边保存悬浮球新位置
+                    val screenW = ScreenUtil.getScreenWidth(context)
+                    val ballSize = config.getActualSizeDp().dp2px.toInt()
+                    val targetX = if (event.rawX < screenW / 2) 0 else (screenW - ballSize).coerceAtLeast(0)
+                    val targetY = event.rawY.toInt()
+
+                    config.posX = targetX
+                    config.posY = targetY
+                    config.save(context)
+                    onPositionSaved?.invoke(targetX, targetY)
+
+                    // 退出全屏模式，窗口恢复悬浮球原尺寸
+                    isFullScreenMode = false
+                    isDraggingOrSelecting = false
+                    onRequestFullScreenLayout?.invoke(false)
+                    invalidate()
+                } else {
+                    // 未进入全屏框选模式：触发常规手势（单击、双击、微滑动）
                     val totalDx = event.rawX - downRawX
                     val totalDy = event.rawY - downRawY
                     val totalDist = hypot(totalDx, totalDy)
 
-                    if (totalDist >= swipeThreshold) {
+                    if (totalDist >= 28f.dp2px) {
                         handleSwipeGesture(totalDx, totalDy)
                     } else if (totalDist < touchSlop) {
                         handleClickGesture()
@@ -275,35 +426,6 @@ class FloatingBallView(
                 VibratorUtils.vibrator(context, true)
                 onActionTrigger?.invoke(config.doubleClickAction)
             }
-        }
-    }
-
-    private fun resetBallOffset() {
-        if (ballOffsetX != 0f || ballOffsetY != 0f) {
-            val anim = ValueAnimator.ofFloat(1f, 0f).apply {
-                duration = 180
-                interpolator = OvershootInterpolator(1.5f)
-                val startX = ballOffsetX
-                val startY = ballOffsetY
-                addUpdateListener { va ->
-                    val fraction = va.animatedValue as Float
-                    ballOffsetX = startX * fraction
-                    ballOffsetY = startY * fraction
-                    invalidate()
-                }
-            }
-            anim.start()
-        }
-    }
-
-    private fun animateScale(targetScale: Float) {
-        ValueAnimator.ofFloat(currentScale, targetScale).apply {
-            duration = 160
-            addUpdateListener {
-                currentScale = it.animatedValue as Float
-                invalidate()
-            }
-            start()
         }
     }
 }
