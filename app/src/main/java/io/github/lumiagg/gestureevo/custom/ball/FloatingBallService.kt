@@ -76,12 +76,19 @@ class FloatingBallService : Service() {
 
         windowManager = getSystemService(Context.WINDOW_SERVICE) as? WindowManager
 
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_OFF)
-            addAction(Intent.ACTION_USER_PRESENT)
-            addAction(ACTION_TOGGLE_MANUAL_HIDE)
+        try {
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_USER_PRESENT)
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(screenReceiver, filter, RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(screenReceiver, filter)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to register screenReceiver", e)
         }
-        registerReceiver(screenReceiver, filter)
 
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
@@ -149,15 +156,19 @@ class FloatingBallService : Service() {
     }
 
     private fun buildNotification(): Notification {
-        val toggleIntent = Intent(ACTION_TOGGLE_MANUAL_HIDE).apply {
-            setPackage(packageName)
+        val toggleIntent = Intent(this, FloatingBallService::class.java).apply {
+            action = ACTION_TOGGLE_MANUAL_HIDE
         }
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         } else {
             PendingIntent.FLAG_UPDATE_CURRENT
         }
-        val pIntent = PendingIntent.getBroadcast(this, 1001, toggleIntent, flags)
+        val pIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            PendingIntent.getForegroundService(this, 1001, toggleIntent, flags)
+        } else {
+            PendingIntent.getService(this, 1001, toggleIntent, flags)
+        }
 
         val statusText = if (isManualHidden) "悬浮球已手动隐藏（点击唤起）" else "悬浮球正在运行中（点击隐藏）"
 
