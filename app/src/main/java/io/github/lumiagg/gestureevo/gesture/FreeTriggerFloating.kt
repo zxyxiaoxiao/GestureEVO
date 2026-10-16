@@ -64,6 +64,11 @@ class FreeTriggerFloating(
         const val TAG = "FreeTriggerFloating"
         var realTriggerIsEnable = false
         var expectTriggerIsEnable = true
+        // === CUSTOM EXTENSION START ===
+        @Volatile
+        var instance: FreeTriggerFloating? = null
+            private set
+        // === CUSTOM EXTENSION END ===
     }
 
     private val triggerViews = mutableMapOf<String, TriggerViewGroup>()
@@ -72,12 +77,36 @@ class FreeTriggerFloating(
     private var lastOrientation: Int = Configuration.ORIENTATION_UNDEFINED
     private var guidePreviewActive = false
     init {
+        // === CUSTOM EXTENSION START ===
+        instance = this
+        // === CUSTOM EXTENSION END ===
         context.launch {
             reloadTriggers()
             checkTriggerOrientation()
             resetAllTriggerEnable()
         }
     }
+
+    // === CUSTOM EXTENSION START ===
+    fun getTriggerScreenInfo(targetTag: String? = null): Triple<Boolean, Int, Int>? {
+        val viewGroup = if (!targetTag.isNullOrBlank()) {
+            triggerViews[targetTag]
+        } else {
+            triggerViews.values.firstOrNull()
+        } ?: return null
+        val view = viewGroup.originalView
+        if (view.isAttachedToWindow) {
+            val loc = IntArray(2)
+            view.getLocationOnScreen(loc)
+            val cx = loc[0] + view.width / 2
+            val cy = loc[1] + view.height / 2
+            val screenW = ScreenUtil.getScreenRealWidth(context, false)
+            val isRight = cx >= screenW / 2
+            return Triple(isRight, cx, cy)
+        }
+        return null
+    }
+    // === CUSTOM EXTENSION END ===
 
     suspend fun migrateActionMap(context: Context, configs: List<FreeTriggerConfig>) = withContext(
         Dispatchers.IO
@@ -459,6 +488,9 @@ class FreeTriggerFloating(
     }
 
     fun destroy() {
+        // === CUSTOM EXTENSION START ===
+        if (instance == this) instance = null
+        // === CUSTOM EXTENSION END ===
         triggerViews.values.forEach { viewGroup ->
             viewGroup.cleanUp { detachViewSafely(it, immediate = false) }
         }

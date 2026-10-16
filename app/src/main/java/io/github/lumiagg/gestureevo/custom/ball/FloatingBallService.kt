@@ -233,7 +233,8 @@ class FloatingBallService : Service() {
         val params = WindowManager.LayoutParams().apply {
             type = windowType
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
             format = PixelFormat.TRANSLUCENT
             gravity = Gravity.START or Gravity.TOP
             width = sizePx
@@ -440,6 +441,21 @@ class FloatingBallService : Service() {
     private fun resolveBallPosition(ballSizePx: Int): Pair<Int, Int> {
         if (config.positionMode == 1) {
             try {
+                val realScreenW = ScreenUtil.getScreenRealWidth(this, false)
+                val realScreenH = ScreenUtil.getScreenRealHeight(this, false)
+
+                // 优先从正在运行的 FreeTriggerFloating 获取实际绑定的触发器视图物理位置
+                val liveInfo = io.github.lumiagg.gestureevo.gesture.FreeTriggerFloating.instance?.getTriggerScreenInfo(
+                    config.followTriggerTag.takeIf { it.isNotBlank() }
+                )
+                if (liveInfo != null) {
+                    val (isRight, _, triggerCenterY) = liveInfo
+                    val posX = if (isRight) (realScreenW - ballSizePx).coerceAtLeast(0) else 0
+                    val posY = (triggerCenterY - ballSizePx / 2).coerceIn(0, (realScreenH - ballSizePx).coerceAtLeast(0))
+                    return Pair(posX, posY)
+                }
+
+                // 若视图尚未附加，通过持久化配置解析 bounds 降级计算
                 val json = runBlocking(Dispatchers.IO) {
                     gestureStore.readKey("key_free_triggers", "")
                 }
@@ -451,11 +467,9 @@ class FloatingBallService : Service() {
                 }
                 if (target != null) {
                     val bounds = freeTriggerBounds(this, target, false)
-                    val screenW = ScreenUtil.getScreenWidth(this)
-                    val screenH = ScreenUtil.getScreenHeight(this)
-                    // 确保始终显示在触发区域中间位置（横纵双向居中）
-                    val posX = (bounds.centerX() - ballSizePx / 2).coerceIn(0, (screenW - ballSizePx).coerceAtLeast(0))
-                    val posY = (bounds.centerY() - ballSizePx / 2).coerceIn(0, (screenH - ballSizePx).coerceAtLeast(0))
+                    val isRight = bounds.centerX() >= realScreenW / 2
+                    val posX = if (isRight) (realScreenW - ballSizePx).coerceAtLeast(0) else 0
+                    val posY = (bounds.centerY() - ballSizePx / 2).coerceIn(0, (realScreenH - ballSizePx).coerceAtLeast(0))
                     return Pair(posX, posY)
                 }
             } catch (e: Exception) {

@@ -140,6 +140,7 @@ class GestureAddActionActivity : AppCompatActivity() {
     }
 
     private fun initSelectTriggerActionView() {
+        binding.subWheelButton.visibility = View.GONE
         binding.longAction.root.visibility = View.INVISIBLE
         binding.shortAction.actionTitle.visibility = View.GONE
         binding.syncButtonsLayout.visibility = View.INVISIBLE
@@ -232,6 +233,10 @@ class GestureAddActionActivity : AppCompatActivity() {
     }
 
     private fun renderSubWheelButton() {
+        if (selectTriggerActionMode || externalActionMode) {
+            binding.subWheelButton.visibility = View.GONE
+            return
+        }
         binding.subWheelButton.setText(if (actionItem.subActionListTag.isNullOrBlank())
             R.string.gesture_add_action_sub_wheel else R.string.gesture_add_action_sub_wheel_linked)
     }

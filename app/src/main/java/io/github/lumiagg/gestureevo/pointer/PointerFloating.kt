@@ -410,6 +410,7 @@ class PointerFloating(
         // === CUSTOM EXTENSION START ===
         private var isConfirmedSelection = false
         private var confirmSelectionJob: Job? = null
+        private var initialTouchX = -1f
         // === CUSTOM EXTENSION END ===
         private val moveTouchHandler = MoveTouchHandler()
         val viewPositionMonitor = ViewPositionMonitor()
@@ -476,6 +477,9 @@ class PointerFloating(
         fun onTouchEvent(event: MotionEvent, fromTouchView: Boolean = false) {
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    // === CUSTOM EXTENSION START ===
+                    initialTouchX = event.rawX
+                    // === CUSTOM EXTENSION END ===
                     pendingHoverLongPress = false
                     pendingHoverPoint = null
                     if (enable && fromTouchView && touchView.alpha == 1f && !alwaysShowTouchArea) {
@@ -503,6 +507,7 @@ class PointerFloating(
                         moveTouchHandler.handleActionUp(event)
                     }
                     // === CUSTOM EXTENSION START ===
+                    initialTouchX = -1f
                     if (followBallEnabled) {
                         io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.resetAndHideFollowBall(context)
                         followBallEnabled = false
@@ -621,9 +626,9 @@ class PointerFloating(
             } else {
                 // 实时框选可框选的目标后先显示为绿色（预选）
                 highlightRectView.showPotentialRect(targetRect, isConfirmed = false)
-                // 停留两倍速度（0.4s）后，选中栏变为黄色，这时为真实选中
+                // 停留两倍时间（500ms）后，选中栏变为黄色，这时为真实选中
                 confirmSelectionJob = context.launch(Dispatchers.Main) {
-                    delay(400)
+                    delay(500)
                     if (isDragMode && !hasStartedDragSelection && potentialDragSelectRect == targetRect) {
                         isConfirmedSelection = true
                         highlightRectView.showPotentialRect(targetRect, isConfirmed = true)
@@ -634,14 +639,14 @@ class PointerFloating(
         }
         // === CUSTOM EXTENSION END ===
 
-        private fun loadPotentialDragSelectRect(startPoint: Point) {
-            val centerX = startPoint.x.toInt()
-            val centerY = startPoint.y.toInt()
+        private fun loadPotentialDragSelectRect(point: Point) {
+            val centerX = point.x.toInt()
+            val centerY = point.y.toInt()
             val pointRect = Rect(
-                centerX - 1,
-                centerY - 1,
-                centerX + 1,
-                centerY + 1
+                centerX - 8,
+                centerY - 8,
+                centerX + 8,
+                centerY + 8
             )
             val sourceRect = Rect(centerX, centerY, centerX, centerY)
             potentialDragSelectJob?.cancel()
@@ -652,10 +657,12 @@ class PointerFloating(
                     .minByOrNull { it.area }
                     ?.bound
                 if (potentialDragSelectSourceRect != sourceRect) return@launch
-                potentialDragSelectRect = targetRect
                 withContext(Dispatchers.Main) {
                     if (!isDragMode || hasStartedDragSelection) return@withContext
-                    applyPotentialTargetRect(targetRect)
+                    if (potentialDragSelectRect != targetRect) {
+                        potentialDragSelectRect = targetRect
+                        applyPotentialTargetRect(targetRect)
+                    }
                 }
             }
         }
@@ -770,34 +777,52 @@ class PointerFloating(
 
                 // === CUSTOM EXTENSION START ===
                 if (pointerFixedArea) {
-                    val distPx = 41.5f.dp2px
+                    val distPx = 41.5f.dp2px * 1.3f // 间距在现有基础上提升30% (53.95dp)
                     val rad = Math.toRadians(40.0)
-                    val dxPx = (distPx * Math.cos(rad)).toFloat()
-                    val dyPx = (distPx * Math.sin(rad) * 1.5).toFloat() // 垂直显示位置整体上移50%
+                    val dxPx = (distPx * Math.cos(rad)).toFloat() // 约 41.328dp
+                    val dyPx = (distPx * Math.sin(rad) * 1.5).toFloat() // 垂直整体上移50% (约 52.017dp)
+                    val leftOffsetPx = 25f.dp2px // 整体向左偏移25dp
                     val pointerRadius = if (view.width > 0) view.width / 2f else 15f.dp2px
                     val minSafeY = if (screenStatusHeight > 0) screenStatusHeight.toFloat() else 0f
 
-                    // 当手指靠近屏幕右侧20dp时自动调整到右上角，否则保持在左上角
                     val threshold20dp = 20f.dp2px
-                    val isNearRightEdge = (screenWidth - touchViewX) <= threshold20dp
+                    val transitionSpan = 25f.dp2px
 
-                    var dx = if (isNearRightEdge) dxPx else -dxPx
-                    var dy = -dyPx
-
-                    // 屏幕边缘防碰撞保护
-                    if (touchViewX + dx + pointerRadius > screenWidth) {
-                        dx = -dxPx
-                    } else if (touchViewX + dx - pointerRadius < 0f) {
-                        dx = dxPx
-                    }
-                    if (touchViewY + dy - pointerRadius < minSafeY) {
-                        dy = dyPx
-                    } else if (touchViewY + dy + pointerRadius > screenHeight) {
-                        dy = -dyPx
+                    val isRightTrigger = if (triggerSide != null) {
+                        triggerSide.equals(TriggerSide.RIGHT, ignoreCase = true)
+                    } else {
+                        if (initialTouchX >= 0f) initialTouchX >= screenWidth / 2f else touchViewX >= screenWidth / 2f
                     }
 
-                    val targetX = (touchViewX + dx).coerceIn(pointerRadius, screenWidth - pointerRadius)
-                    val targetY = (touchViewY + dy).coerceIn(minSafeY + pointerRadius, screenHeight - pointerRadius)
+                    val dx = if (isRightTrigger) {
+                        // 从屏幕右侧边缘触发
+                        val distToRight = (screenWidth - touchViewX).coerceAtLeast(0f)
+                        if (distToRight <= threshold20dp) {
+                            // 手指还没离开屏幕右侧边缘20dp时：始终显示在靠屏幕一侧（右上角）
+                            dxPx
+                        } else {
+                            // 手指离开屏幕右侧边缘20dp后：从右上角平滑恢复跳转到左上角（根据手指移动实时调整，绝不闪现）
+                            val progress = ((distToRight - threshold20dp) / transitionSpan).coerceIn(0f, 1f)
+                            val smooth = progress * progress * (3f - 2f * progress)
+                            dxPx * (1f - 2f * smooth)
+                        }
+                    } else {
+                        // 从屏幕左侧边缘触发
+                        val distToLeft = touchViewX.coerceAtLeast(0f)
+                        if (distToLeft <= threshold20dp) {
+                            // 手指还没离开屏幕左侧边缘20dp时：始终显示在靠屏幕一侧（左上角）
+                            -dxPx
+                        } else {
+                            // 手指离开屏幕左侧边缘20dp后：从左上角平滑恢复跳转到右上角
+                            val progress = ((distToLeft - threshold20dp) / transitionSpan).coerceIn(0f, 1f)
+                            val smooth = progress * progress * (3f - 2f * progress)
+                            dxPx * (-1f + 2f * smooth)
+                        }
+                    }
+
+                    // 整体向左偏移25dp，自适应边缘防裁切（不得从屏幕中消失）
+                    val targetX = (touchViewX + dx - leftOffsetPx).coerceIn(pointerRadius, screenWidth - pointerRadius)
+                    val targetY = (touchViewY - dyPx).coerceIn(minSafeY + pointerRadius, screenHeight - pointerRadius)
                     return Point(targetX, targetY)
                 }
                 // === CUSTOM EXTENSION END ===
@@ -828,29 +853,27 @@ class PointerFloating(
                 view.y = targetPoint.y - halfPointerHeight
 
                 if (isDragMode) {
-                    val useDragSelection = highlightRectView.shouldUseDragSelection(targetPoint)
-                    if (useDragSelection) {
+                    val currentPoint = Point(targetPoint.x, targetPoint.y)
+                    val selectionRect = highlightRectView.currentSelectionRect(targetPoint)
+                    val isDragLarge = selectionRect.width() >= 35f.dp2px && selectionRect.height() >= 35f.dp2px
+
+                    if (isDragLarge && potentialDragSelectRect == null) {
                         if (!hasStartedDragSelection) {
                             hasStartedDragSelection = true
                             potentialDragSelectJob?.cancel()
                             potentialDragSelectJob = null
-                            potentialDragSelectRect = null
-                            potentialDragSelectSourceRect = null
                             pendingPotentialDragSelectRect = null
                             lastPotentialThinRect = null
+                            confirmSelectionJob?.cancel()
+                            isConfirmedSelection = false
                             highlightRectView.hidePotentialRect()
                         }
                     } else {
-                        if (hasStartedDragSelection) {
-                            hasStartedDragSelection = false
-                            lastPotentialThinRect = null
-                        }
-                        updatePotentialDragSelectRect(
-                            highlightRectView.currentSelectionRect(targetPoint),
-                            targetPoint
-                        )
+                        // 依然可以实时移动指针而不会触发截图功能，持续探测当前目标
+                        hasStartedDragSelection = false
+                        loadPotentialDragSelectRect(targetPoint)
                     }
-                    highlightRectView.updateRect(Point(targetPoint.x, targetPoint.y))
+                    highlightRectView.updateRect(currentPoint)
                     if (highlightRectView.isBackToOrigin) {
                         exitDragMode()
                     }
@@ -872,12 +895,10 @@ class PointerFloating(
                     confirmSelectionJob = null
                     val wasConfirmed = isConfirmedSelection
                     isConfirmedSelection = false
+                    val targetConfirmedRect = potentialDragSelectRect
                     // === CUSTOM EXTENSION END ===
                     view.visibility = View.INVISIBLE
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
-                    val previewSelectionRect = potentialDragSelectRect
-                        ?.takeIf { potentialDragSelectSourceRect == currentSelectionRect }
-                        ?.let { Rect(it) }
                     potentialDragSelectJob?.cancel()
                     potentialDragSelectJob = null
                     potentialDragSelectRect = null
@@ -885,33 +906,27 @@ class PointerFloating(
                     pendingPotentialDragSelectRect = null
                     highlightRectView.hidePotentialRect()
                     context.launch {
-                        val resolvedSelectionRect = if (!hasStartedDragSelection) {
-                            if (wasConfirmed) {
-                                previewSelectionRect ?: resolvePotentialDragSelectRect(currentSelectionRect)
-                            } else {
-                                null
-                            }
-                        } else {
-                            null
-                        }
-                        val newRect = if (resolvedSelectionRect != null) {
-                            resolvedSelectionRect
-                        } else if (hasStartedDragSelection) currentSelectionRect.let {
-                            Rect(
-                                min(it.left, it.right),
-                                min(it.top, it.bottom),
-                                max(it.left, it.right),
-                                max(it.top, it.bottom)
-                            )
-                        } else {
-                            null
-                        }
-                        if (newRect != null) {
-                            val effectiveSide = triggerSide
-                                ?: (if (newRect.centerX() < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
+                        val effectiveSide = triggerSide
+                            ?: (if (computePosition().x < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
+                        if (wasConfirmed && targetConfirmedRect != null) {
+                            // 只要在选中栏变为黄色（真实选中）后松开手指才会选择被框选的界面元素
                             produceInspireEvent(
-                                InspireEvent(rect = newRect, side = effectiveSide)
+                                InspireEvent(rect = targetConfirmedRect, side = effectiveSide)
                             )
+                        } else if (hasStartedDragSelection && currentSelectionRect.width() >= 30f.dp2px && currentSelectionRect.height() >= 30f.dp2px) {
+                            // 拖动后可以截取屏幕
+                            val dragRect = Rect(
+                                min(currentSelectionRect.left, currentSelectionRect.right),
+                                min(currentSelectionRect.top, currentSelectionRect.bottom),
+                                max(currentSelectionRect.left, currentSelectionRect.right),
+                                max(currentSelectionRect.top, currentSelectionRect.bottom)
+                            )
+                            produceInspireEvent(
+                                InspireEvent(rect = dragRect, side = effectiveSide)
+                            )
+                        } else {
+                            // 绿色预选状态或未满足真实选中/拖动截图条件：不触发任何截图或选择操作，安全取消退出
+                            Log.d("PointerFloating", "Selection cancelled on UP (wasConfirmed=$wasConfirmed)")
                         }
                     }
                 } else if (pendingHoverLongPress) {
