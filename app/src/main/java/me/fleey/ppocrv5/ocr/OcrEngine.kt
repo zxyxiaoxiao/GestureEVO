@@ -40,7 +40,11 @@ class OcrEngine private constructor(
     private var cacheInitialized = false
 
     init {
-      System.loadLibrary("ppocrv5_jni")
+      try {
+        System.loadLibrary("ppocrv5_jni")
+      } catch (t: Throwable) {
+        android.util.Log.e(TAG, "Failed to load ppocrv5_jni native library", t)
+      }
     }
 
     /**

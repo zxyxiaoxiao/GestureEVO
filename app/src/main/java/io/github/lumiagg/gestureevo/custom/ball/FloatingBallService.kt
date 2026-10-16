@@ -13,7 +13,9 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -22,12 +24,17 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.core.app.NotificationCompat
 import io.github.lumiagg.gestureevo.R
+import io.github.lumiagg.gestureevo.gesture.config.FreeTriggerConfig
+import io.github.lumiagg.gestureevo.gesture.freeTriggerBounds
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.dp2px
+import io.github.lumiagg.gestureevo.utils.gestureStore
+import io.github.lumiagg.gestureevo.utils.readKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * 独立前台服务：管理悬浮球渲染、状态切换、全屏拖动定位与触发器跟随联动
@@ -231,8 +238,9 @@ class FloatingBallService : Service() {
             gravity = Gravity.START or Gravity.TOP
             width = sizePx
             height = sizePx
-            x = config.posX
-            y = config.posY
+            val (posX, posY) = resolveBallPosition(sizePx)
+            x = posX
+            y = posY
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode =
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -273,8 +281,9 @@ class FloatingBallService : Service() {
         val sizePx = config.getActualSizeDp().dp2px.toInt()
         params.width = sizePx
         params.height = sizePx
-        params.x = config.posX
-        params.y = config.posY
+        val (posX, posY) = resolveBallPosition(sizePx)
+        params.x = posX
+        params.y = posY
 
         view.updateConfig(config)
         try {
@@ -357,6 +366,10 @@ class FloatingBallService : Service() {
      * 触发器手指按下：悬浮球显示在手指按压位置
      */
     fun showAtPoint(screenX: Float, screenY: Float) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            Handler(Looper.getMainLooper()).post { showAtPoint(screenX, screenY) }
+            return
+        }
         if (!canDrawOverlays()) return
         if (!isBallAdded) {
             attachBallView()
@@ -380,6 +393,10 @@ class FloatingBallService : Service() {
      * 触发器手指移动：悬浮球跟随移动
      */
     fun updateFollowPoint(screenX: Float, screenY: Float) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            Handler(Looper.getMainLooper()).post { updateFollowPoint(screenX, screenY) }
+            return
+        }
         val params = layoutParams ?: return
         val view = ballView ?: return
         val wm = windowManager ?: return
@@ -397,19 +414,56 @@ class FloatingBallService : Service() {
      * 触发器手指松开：悬浮球归位并隐藏
      */
     fun resetAndHideTriggerFollow() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            Handler(Looper.getMainLooper()).post { resetAndHideTriggerFollow() }
+            return
+        }
         isTemporarilyShowingForTrigger = false
         val params = layoutParams ?: return
         val view = ballView ?: return
         val wm = windowManager ?: return
 
-        // 归位到原配置坐标
-        params.x = config.posX
-        params.y = config.posY
+        // 归位到原配置坐标或对齐触发器
+        val sizePx = config.getActualSizeDp().dp2px.toInt()
+        val (posX, posY) = resolveBallPosition(sizePx)
+        params.x = posX
+        params.y = posY
         try {
             wm.updateViewLayout(view, params)
         } catch (_: Exception) {}
 
         refreshBallVisibility()
+    }
+
+    private fun resolveBallPosition(ballSizePx: Int): Pair<Int, Int> {
+        if (config.positionMode == 1) {
+            try {
+                val json = runBlocking(Dispatchers.IO) {
+                    gestureStore.readKey("key_free_triggers", "")
+                }
+                val triggers = FreeTriggerConfig.toModelList(json) ?: emptyList()
+                val target = if (config.followTriggerTag.isNotBlank()) {
+                    triggers.find { it.tag == config.followTriggerTag }
+                } else {
+                    triggers.firstOrNull { it.enable } ?: triggers.firstOrNull()
+                }
+                if (target != null) {
+                    val bounds = freeTriggerBounds(this, target, false)
+                    val screenW = ScreenUtil.getScreenWidth(this)
+                    val screenH = ScreenUtil.getScreenHeight(this)
+                    val posX = if (bounds.centerX() < screenW / 2) {
+                        0
+                    } else {
+                        (screenW - ballSizePx).coerceAtLeast(0)
+                    }
+                    val posY = (bounds.centerY() - ballSizePx / 2).coerceIn(0, (screenH - ballSizePx).coerceAtLeast(0))
+                    return Pair(posX, posY)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "resolveBallPosition failed", e)
+            }
+        }
+        return Pair(config.posX, config.posY)
     }
 
     private fun dispatchAction(actionLink: String) {

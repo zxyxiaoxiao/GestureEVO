@@ -138,6 +138,21 @@
                         android:layout_height="wrap_content" />
                 </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
 
+                <!-- === CUSTOM EXTENSION START === -->
+                <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    app:settingsRowSummary="开启后该触发器将被系统手势栏覆盖，系统全面屏手势优先"
+                    app:settingsRowTitle="低于系统手势栏层级">
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/belowGestureBarSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                <!-- === CUSTOM EXTENSION END === -->
+
                 <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -293,21 +308,6 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
                     app:settingsRowTitle="@string/free_trigger_manage_list" />
-
-                <!-- === CUSTOM EXTENSION START === -->
-                <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    app:settingsRowSummary="开启后该触发器将被系统手势栏覆盖，系统全面屏手势优先"
-                    app:settingsRowTitle="低于系统手势栏层级">
-
-                    <com.google.android.material.materialswitch.MaterialSwitch
-                        android:id="@+id/belowGestureBarSwitch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content" />
-                </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
-                <!-- === CUSTOM EXTENSION END === -->
             </LinearLayout>
         </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
 

@@ -167,12 +167,18 @@ object MlKitOcr {
     }
 
     private fun createEngine(): OcrEngine? {
-        return OcrEngine.create(EvoApplication.application, AcceleratorType.CPU)
-            .getOrElse { error ->
-                AppLogger.event(LogModule.OCR, "engine_initialization_failed", LogLevel.ERROR, error = error)
-                Log.e(TAG, "OCR engine init failed", error)
-                null
-            }
+        return try {
+            OcrEngine.create(EvoApplication.application, AcceleratorType.CPU)
+                .getOrElse { error ->
+                    AppLogger.event(LogModule.OCR, "engine_initialization_failed", LogLevel.ERROR, error = error)
+                    Log.e(TAG, "OCR engine init failed", error)
+                    null
+                }
+        } catch (t: Throwable) {
+            AppLogger.event(LogModule.OCR, "engine_creation_failed", LogLevel.ERROR, error = t)
+            Log.e(TAG, "OCR engine creation failed", t)
+            null
+        }
     }
 
     private fun processWithEngine(

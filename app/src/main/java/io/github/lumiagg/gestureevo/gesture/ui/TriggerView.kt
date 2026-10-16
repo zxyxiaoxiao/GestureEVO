@@ -543,24 +543,6 @@ class TriggerView @JvmOverloads constructor(
         override fun onTouch(view: View, event: MotionEvent): Boolean {
             if (!isActivated) return false
 
-            // === CUSTOM EXTENSION START ===
-            if (triggerConfig.getState(FreeTriggerConfig.FLAG_FOLLOW_BALL)) {
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        val pt = getTouchPointOnScreen(event)
-                        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.showAt(context, pt.x, pt.y)
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        val pt = getTouchPointOnScreen(event)
-                        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.updateFollowPosition(context, pt.x, pt.y)
-                    }
-                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.resetAndHideFollowBall(context)
-                    }
-                }
-            }
-            // === CUSTOM EXTENSION END ===
-
             // Always report raw touch event
             triggerCallBack.onGesture(
                 this@TriggerView,
@@ -812,7 +794,7 @@ class TriggerView @JvmOverloads constructor(
         updateSystemGestureExclusion()
     }
 
-    private fun updateSystemGestureExclusion() {
+    fun updateSystemGestureExclusion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // === CUSTOM EXTENSION START ===
             if (triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)) {

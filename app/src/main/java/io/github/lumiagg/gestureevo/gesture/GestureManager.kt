@@ -406,6 +406,13 @@ class GestureManager(
                         }
 
                         else -> {
+                            // === CUSTOM EXTENSION START ===
+                            if (actionType == GestureActionType.POINTER &&
+                                triggerConfig.getState(FreeTriggerConfig.FLAG_FOLLOW_BALL)
+                            ) {
+                                pointerFloating.followBallEnabled = true
+                            }
+                            // === CUSTOM EXTENSION END ===
                             ActionProxy(context, action?.firstStageLink ?: "")
                                 .execute(triggerView.screenAnchor(event))
                         }
@@ -432,6 +439,11 @@ class GestureManager(
                         val sw = triggerView.resources.displayMetrics.widthPixels
                         pointerFloating.triggerSide = if (event.rawX < sw / 2f) TriggerSide.LEFT else TriggerSide.RIGHT
                     }
+                    // === CUSTOM EXTENSION START ===
+                    if (triggerView.triggerConfig.getState(FreeTriggerConfig.FLAG_FOLLOW_BALL)) {
+                        pointerFloating.followBallEnabled = true
+                    }
+                    // === CUSTOM EXTENSION END ===
                 }
                 pointerFloating.pointerManger.onTouchEvent(event)
                 if (actionViewFloatingLazy.isInitialized() &&

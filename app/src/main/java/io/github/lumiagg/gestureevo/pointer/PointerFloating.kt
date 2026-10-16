@@ -88,6 +88,7 @@ class PointerFloating(
     private var touchAreaOffsetDp = 0
     // === CUSTOM EXTENSION START ===
     private var pointerFixedArea = false
+    var followBallEnabled = false
     // === CUSTOM EXTENSION END ===
     private var pointerVisibleRequested = false
     var triggerSide: String? = null
@@ -244,6 +245,12 @@ class PointerFloating(
     }
 
     fun hide() = context.postOnMain {
+        // === CUSTOM EXTENSION START ===
+        if (followBallEnabled) {
+            io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.resetAndHideFollowBall(context)
+            followBallEnabled = false
+        }
+        // === CUSTOM EXTENSION END ===
         pointerVisibleRequested = false
         pointerManger.viewPositionMonitor.stop()
         if (pointerManger.isDragMode) {
@@ -477,6 +484,11 @@ class PointerFloating(
                     touchViewY = event.rawY
                     if (enable) {
                         moveTouchHandler.handleActionMove(event)
+                        // === CUSTOM EXTENSION START ===
+                        if (followBallEnabled) {
+                            io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.showAt(context, event.rawX, event.rawY)
+                        }
+                        // === CUSTOM EXTENSION END ===
                     }
                 }
 
@@ -486,6 +498,12 @@ class PointerFloating(
                     if (enable) {
                         moveTouchHandler.handleActionUp(event)
                     }
+                    // === CUSTOM EXTENSION START ===
+                    if (followBallEnabled) {
+                        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.resetAndHideFollowBall(context)
+                        followBallEnabled = false
+                    }
+                    // === CUSTOM EXTENSION END ===
                     enable = false
                 }
             }
@@ -530,8 +548,16 @@ class PointerFloating(
             lastPotentialThinRect = null
             context.gestureManager?.setInteractionMode(InteractionMode.POINTER_DRAG_SELECT)
             context.launch(Dispatchers.IO) {
-                MlKitOcr.preload()
-                SmartSegmenter.prewarm(context.applicationContext)
+                try {
+                    MlKitOcr.preload()
+                } catch (t: Throwable) {
+                    android.util.Log.e("PointerFloating", "MlKitOcr preload error", t)
+                }
+                try {
+                    SmartSegmenter.prewarm(context.applicationContext)
+                } catch (t: Throwable) {
+                    android.util.Log.e("PointerFloating", "SmartSegmenter prewarm error", t)
+                }
             }
             VibratorUtils.vibrator(context, true)
             context.postOnMain {
@@ -721,9 +747,47 @@ class PointerFloating(
 
                 // === CUSTOM EXTENSION START ===
                 if (pointerFixedArea) {
-                    val offsetPx = 21.5f.dp2px
-                    val targetX = touchViewX.coerceIn(0f, screenWidth.toFloat())
-                    val targetY = (touchViewY - offsetPx).coerceIn(0f, screenHeight.toFloat())
+                    val maxDistPx = 41.5f.dp2px
+                    val deltaPx = (41.5f / Math.sqrt(2.0).toFloat()).dp2px
+                    val pointerRadius = if (view.width > 0) view.width / 2f else 15f.dp2px
+                    val minSafeY = if (screenStatusHeight > 0) screenStatusHeight.toFloat() else 0f
+
+                    // 1. 基准朝向：屏幕右侧触发默认左上角 45°，屏幕左侧触发默认右上角 45°
+                    val preferLeft = when (triggerSide) {
+                        TriggerSide.RIGHT -> true
+                        TriggerSide.LEFT -> false
+                        else -> touchViewX >= screenWidth / 2f
+                    }
+
+                    // 2. 水平方向动态锚点与碰撞避让（防裁切）
+                    var dx = if (preferLeft) -deltaPx else deltaPx
+                    if (touchViewX + dx + pointerRadius > screenWidth) {
+                        dx = -deltaPx
+                    } else if (touchViewX + dx - pointerRadius < 0f) {
+                        dx = deltaPx
+                    }
+
+                    // 3. 垂直方向动态锚点与碰撞避让（默认朝上方）
+                    var dy = -deltaPx
+                    if (touchViewY + dy - pointerRadius < minSafeY) {
+                        dy = deltaPx
+                    } else if (touchViewY + dy + pointerRadius > screenHeight) {
+                        dy = -deltaPx
+                    }
+
+                    // 4. 计算坐标并防裁切限制，且直线距离始终不得超过 41.5dp
+                    var targetX = (touchViewX + dx).coerceIn(pointerRadius, screenWidth - pointerRadius)
+                    var targetY = (touchViewY + dy).coerceIn(minSafeY + pointerRadius, screenHeight - pointerRadius)
+
+                    val distSq = (targetX - touchViewX) * (targetX - touchViewX) + (targetY - touchViewY) * (targetY - touchViewY)
+                    if (distSq > maxDistPx * maxDistPx) {
+                        val currentDist = Math.sqrt(distSq.toDouble()).toFloat()
+                        if (currentDist > 0.001f) {
+                            val scale = maxDistPx / currentDist
+                            targetX = touchViewX + (targetX - touchViewX) * scale
+                            targetY = touchViewY + (targetY - touchViewY) * scale
+                        }
+                    }
                     return Point(targetX, targetY)
                 }
                 // === CUSTOM EXTENSION END ===

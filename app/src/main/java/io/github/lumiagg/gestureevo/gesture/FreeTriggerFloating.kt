@@ -153,6 +153,9 @@ class FreeTriggerFloating(
         viewGroup.originalView.triggerConfig = config
         val originalLayoutParams = createWindowLayoutParams(config, false)
         updateViewLayoutSafely(viewGroup.originalView, originalLayoutParams)
+        // === CUSTOM EXTENSION START ===
+        viewGroup.originalView.updateSystemGestureExclusion()
+        // === CUSTOM EXTENSION END ===
 
         // Handle mirrored view
         if (config.getState(FreeTriggerConfig.FLAG_MIRROR)) {
@@ -163,7 +166,12 @@ class FreeTriggerFloating(
                 // Update existing mirrored view
                 viewGroup.mirrorView?.triggerConfig = config
                 val mirrorLayoutParams = createWindowLayoutParams(config, true)
-                viewGroup.mirrorView?.let { updateViewLayoutSafely(it, mirrorLayoutParams) }
+                viewGroup.mirrorView?.let { 
+                    updateViewLayoutSafely(it, mirrorLayoutParams)
+                    // === CUSTOM EXTENSION START ===
+                    it.updateSystemGestureExclusion()
+                    // === CUSTOM EXTENSION END ===
+                }
             }
         } else if (viewGroup.mirrorView != null) {
             // Mirrored view no longer needed, remove it
@@ -208,6 +216,13 @@ class FreeTriggerFloating(
                 windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
             }
 
+            // === CUSTOM EXTENSION START ===
+            if (config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)) {
+                windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                windowFlags = windowFlags and WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS.inv()
+            }
+            // === CUSTOM EXTENSION END ===
+
             configureAccessibilityOverlay(
                 windowFlags,
                 width = bounds.width(),
@@ -218,16 +233,6 @@ class FreeTriggerFloating(
                     "GestureEVO:FreeTriggerFloating:${config.tag}"
                 },
             )
-
-            // === CUSTOM EXTENSION START ===
-            if (config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR) &&
-                android.provider.Settings.canDrawOverlays(context)
-            ) {
-                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                    type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                }
-            }
-            // === CUSTOM EXTENSION END ===
 
             x = bounds.left
             y = bounds.top
