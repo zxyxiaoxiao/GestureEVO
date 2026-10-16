@@ -75,12 +75,17 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="@string/inspire_settings_pointer_drag_mode" app:settingsRowSummary="@string/inspire_settings_pointer_drag_mode_desc">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerDragModeSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <!-- === CUSTOM EXTENSION START === -->
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="区域固定" app:settingsRowSummary="指针位置始终保持在以手指按压区域到指针显示处直径为21.5dp的位置显示">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerFixedAreaSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <!-- === CUSTOM EXTENSION END === -->
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>
             <!-- === CUSTOM EXTENSION START === -->
             <io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard android:id="@+id/floatingBallCard" android:layout_width="match_parent" android:layout_marginTop="@dimen/settings_card_spacing" app:settingsCardTitle="悬浮球设置" app:settingsCardSummary="配置悬浮球本体、手势触发与动作交互规则" app:settingsCardExpanded="false" android:layout_height="wrap_content">
                 <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="12dp" android:paddingTop="4dp" android:paddingBottom="12dp">
-                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/floating_ball_entry_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="悬浮球" app:settingsRowSummary="自定义悬浮球大小、样式、线条与自动隐藏等" />
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/floating_ball_entry_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="悬浮球" app:settingsRowSummary="自定义悬浮球大小、样式与自动隐藏等" />
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsNavRow android:id="@+id/floating_ball_gesture_entry_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="手势" app:settingsRowSummary="自定义悬浮球单击、双击、长按及上下左右滑动手势动作" />
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

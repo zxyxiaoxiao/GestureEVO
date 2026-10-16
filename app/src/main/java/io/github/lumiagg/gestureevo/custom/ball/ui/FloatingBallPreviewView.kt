@@ -33,7 +33,6 @@ class FloatingBallPreviewView @JvmOverloads constructor(
 
     enum class PreviewMode {
         BALL_ICON,  // 预览悬浮球本体（尺寸、内部占比、透明度、边框、圆角、图片）
-        LINE_STYLE, // 预览展开菜单线条（宽度、高度、透明度、取色、渐变、虚实线）
         SCREEN_POS  // 微缩屏幕视口位置预览（拖拽悬浮球更新坐标）
     }
 
@@ -122,8 +121,7 @@ class FloatingBallPreviewView @JvmOverloads constructor(
 
         when (mode) {
             PreviewMode.BALL_ICON -> drawBallIconPreview(canvas, w / 2f, h / 2f)
-            PreviewMode.LINE_STYLE -> drawLineStylePreview(canvas, w, h)
-            PreviewMode.SCREEN_POS -> drawScreenPosPreview(canvas, w, h)
+            PreviewMode.SCREEN_POS -> drawScreenPosPreview(canvas, w / 2f, h / 2f)
         }
     }
 
@@ -186,74 +184,7 @@ class FloatingBallPreviewView @JvmOverloads constructor(
         }
     }
 
-    private fun drawLineStylePreview(canvas: Canvas, w: Float, h: Float) {
-        // 微缩屏幕框架尺寸计算
-        val pad = 16f.dp2px
-        val maxW = w - pad * 2
-        val maxH = h - pad * 2
-        val aspect = screenRealWidth.toFloat() / maxOf(1, screenRealHeight).toFloat()
-        var viewW = maxW
-        var viewH = viewW / aspect
-        if (viewH > maxH) {
-            viewH = maxH
-            viewW = viewH * aspect
-        }
-        val frameLeft = (w - viewW) / 2f
-        val frameTop = (h - viewH) / 2f
-        val frameRight = frameLeft + viewW
-        val frameBottom = frameTop + viewH
 
-        // 绘制微缩屏幕边框
-        screenFramePaint.color = Color.parseColor("#44888888")
-        canvas.drawRoundRect(frameLeft, frameTop, frameRight, frameBottom, 12f.dp2px, 12f.dp2px, screenFramePaint)
-
-        // 计算屏幕右侧边缘触发区域的尺寸与位置
-        val triggerH = (frameBottom - frameTop) * (config.lineHeightPercent.coerceIn(5, 100) / 100f)
-        val triggerW = 4f.dp2px + (viewW * 0.18f) * (config.lineWidthPercent.coerceIn(5, 100) / 100f)
-        val triggerTop = frameTop + (frameBottom - frameTop - triggerH) / 2f
-        val triggerBottom = triggerTop + triggerH
-        val triggerRight = frameRight
-        val triggerLeft = triggerRight - triggerW
-
-        tempRect.set(triggerLeft, triggerTop, triggerRight, triggerBottom)
-
-        // 触发区域背景画笔
-        val baseColor = config.lineColor
-        val alphaVal = (config.getLineAlpha() * 255).toInt()
-        val triggerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.FILL
-            if (config.lineGradientEnabled) {
-                val startC = baseColor
-                val endC = Color.argb(0, Color.red(baseColor), Color.green(baseColor), Color.blue(baseColor))
-                shader = LinearGradient(triggerRight, triggerTop, triggerLeft, triggerTop, startC, endC, Shader.TileMode.CLAMP)
-            } else {
-                shader = null
-                color = baseColor
-            }
-            alpha = alphaVal
-        }
-        canvas.drawRoundRect(tempRect, 4f.dp2px, 4f.dp2px, triggerPaint)
-
-        // 触发区域边框（实线 / 虚线）
-        val triggerBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 1.5f.dp2px
-            color = baseColor
-            alpha = (alphaVal * 0.8f).toInt()
-            if (config.lineIsDotted) {
-                pathEffect = DashPathEffect(floatArrayOf(6f.dp2px, 4f.dp2px), 0f)
-            } else {
-                pathEffect = null
-            }
-        }
-        canvas.drawRoundRect(tempRect, 4f.dp2px, 4f.dp2px, triggerBorderPaint)
-
-        // 在触发区域旁绘制悬浮球，表现拖拽出悬浮球的效果
-        val ballSizeOnScreen = 16f.dp2px
-        val ballCx = triggerLeft - ballSizeOnScreen
-        val ballCy = (triggerTop + triggerBottom) / 2f
-        drawBallAt(canvas, ballCx, ballCy, ballSizeOnScreen / 2f)
-    }
 
     private fun drawScreenPosPreview(canvas: Canvas, w: Float, h: Float) {
         // 计算微缩手机屏幕框的尺寸与内缩居中

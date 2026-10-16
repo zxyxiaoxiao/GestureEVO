@@ -18,27 +18,21 @@ data class FloatingBallConfig(
     var iconAlphaPercent: Int = 50, // 透明度 0~100%，默认 50%
     var posX: Int = 0,
     var posY: Int = 600,
+    var positionMode: Int = 0, // 0: 自定义位置, 1: 始终跟随触发器
+    var followTriggerTag: String = "", // 跟随触发器的 tag，为空时跟随全部触发器
     var iconStyleType: Int = 0, // 0: 预设圆形模板, 1: 自定义图片
     var customIconPath: String = "", // 自定义图片路径
     var borderWidthDp: Float = 2f, // 边框粗细 dp
     var borderColor: Int = Color.parseColor("#44888888"), // 边框颜色
     var cornerRadiusDp: Float = 24f, // 圆角大小 dp (对于48dp圆，24dp即正圆)
 
-    // 【分组2：线】
-    var lineHeightPercent: Int = 20, // 高度 0~100%，默认 20%
-    var lineWidthPercent: Int = 59, // 宽度 0~100%，默认 59%
-    var lineAlphaPercent: Int = 72, // 透明度 0~100%，默认 72%
-    var lineColor: Int = Color.parseColor("#4285F4"), // 线条颜色
-    var lineGradientEnabled: Boolean = true, // 渐变开关
-    var lineIsDotted: Boolean = false, // 实线/虚线线型切换 (false: 实线, true: 虚线)
-
-    // 【分组3：隐藏设置】
+    // 【分组2：隐藏设置】
     var manualHideEnabled: Boolean = false, // 启用手动隐藏，默认关闭
     var manualHideWakeType: Int = 0, // 0: 通知点击唤起, 1: 手势唤起
     var lockScreenHide: Boolean = true, // 锁屏悬浮球：关闭 (即锁屏时隐藏)
     var autoHideApps: Set<String> = emptySet(), // 自动隐藏 APP 黑名单包名列表
 
-    // 手势动作绑定
+    // 【分组3：手势动作绑定】
     var clickAction: String = "gesture-evo://action/ACC_ACTION?accAction=1", // 返回
     var doubleClickAction: String = "gesture-evo://action/ACC_ACTION?accAction=3", // 最近任务
     var longPressAction: String = "", // 长按
@@ -64,38 +58,25 @@ data class FloatingBallConfig(
         return (iconAlphaPercent.coerceIn(0, 100)) / 100f
     }
 
-    /**
-     * 获取线条透明度浮点值 (0.0f ~ 1.0f)
-     */
-    fun getLineAlpha(): Float {
-        return (lineAlphaPercent.coerceIn(0, 100)) / 100f
-    }
-
     fun save(context: Context) {
         val sp: SharedPreferences = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         sp.edit().apply {
             putBoolean(KEY_ENABLED, isEnabled)
             putBoolean(KEY_AUTO_SNAP, autoSnapToEdge)
 
-            // 图标
+            // 图标与位置
             putInt(KEY_SIZE_PERCENT, sizePercent)
             putInt(KEY_INNER_RATIO_PERCENT, innerRatioPercent)
             putInt(KEY_ICON_ALPHA_PERCENT, iconAlphaPercent)
             putInt(KEY_POS_X, posX)
             putInt(KEY_POS_Y, posY)
+            putInt(KEY_POS_MODE, positionMode)
+            putString(KEY_FOLLOW_TRIGGER_TAG, followTriggerTag)
             putInt(KEY_ICON_STYLE_TYPE, iconStyleType)
             putString(KEY_CUSTOM_ICON_PATH, customIconPath)
             putFloat(KEY_BORDER_WIDTH_DP, borderWidthDp)
             putInt(KEY_BORDER_COLOR, borderColor)
             putFloat(KEY_CORNER_RADIUS_DP, cornerRadiusDp)
-
-            // 线
-            putInt(KEY_LINE_HEIGHT_PERCENT, lineHeightPercent)
-            putInt(KEY_LINE_WIDTH_PERCENT, lineWidthPercent)
-            putInt(KEY_LINE_ALPHA_PERCENT, lineAlphaPercent)
-            putInt(KEY_LINE_COLOR, lineColor)
-            putBoolean(KEY_LINE_GRADIENT, lineGradientEnabled)
-            putBoolean(KEY_LINE_IS_DOTTED, lineIsDotted)
 
             // 隐藏
             putBoolean(KEY_MANUAL_HIDE_ENABLED, manualHideEnabled)
@@ -127,18 +108,13 @@ data class FloatingBallConfig(
         private const val KEY_ICON_ALPHA_PERCENT = "key_ball_icon_alpha_percent"
         private const val KEY_POS_X = "key_ball_pos_x"
         private const val KEY_POS_Y = "key_ball_pos_y"
+        private const val KEY_POS_MODE = "key_ball_pos_mode"
+        private const val KEY_FOLLOW_TRIGGER_TAG = "key_ball_follow_trigger_tag"
         private const val KEY_ICON_STYLE_TYPE = "key_ball_icon_style_type"
         private const val KEY_CUSTOM_ICON_PATH = "key_ball_custom_icon_path"
         private const val KEY_BORDER_WIDTH_DP = "key_ball_border_width_dp"
         private const val KEY_BORDER_COLOR = "key_ball_border_color"
         private const val KEY_CORNER_RADIUS_DP = "key_ball_corner_radius_dp"
-
-        private const val KEY_LINE_HEIGHT_PERCENT = "key_ball_line_height_percent"
-        private const val KEY_LINE_WIDTH_PERCENT = "key_ball_line_width_percent"
-        private const val KEY_LINE_ALPHA_PERCENT = "key_ball_line_alpha_percent"
-        private const val KEY_LINE_COLOR = "key_ball_line_color"
-        private const val KEY_LINE_GRADIENT = "key_ball_line_gradient"
-        private const val KEY_LINE_IS_DOTTED = "key_ball_line_is_dotted"
 
         private const val KEY_MANUAL_HIDE_ENABLED = "key_ball_manual_hide_enabled"
         private const val KEY_MANUAL_HIDE_WAKE_TYPE = "key_ball_manual_hide_wake_type"
@@ -164,18 +140,13 @@ data class FloatingBallConfig(
                 iconAlphaPercent = sp.getInt(KEY_ICON_ALPHA_PERCENT, 50),
                 posX = sp.getInt(KEY_POS_X, 0),
                 posY = sp.getInt(KEY_POS_Y, 600),
+                positionMode = sp.getInt(KEY_POS_MODE, 0),
+                followTriggerTag = sp.getString(KEY_FOLLOW_TRIGGER_TAG, "") ?: "",
                 iconStyleType = sp.getInt(KEY_ICON_STYLE_TYPE, 0),
                 customIconPath = sp.getString(KEY_CUSTOM_ICON_PATH, "") ?: "",
                 borderWidthDp = sp.getFloat(KEY_BORDER_WIDTH_DP, 2f),
                 borderColor = sp.getInt(KEY_BORDER_COLOR, Color.parseColor("#44888888")),
                 cornerRadiusDp = sp.getFloat(KEY_CORNER_RADIUS_DP, 24f),
-
-                lineHeightPercent = sp.getInt(KEY_LINE_HEIGHT_PERCENT, 20),
-                lineWidthPercent = sp.getInt(KEY_LINE_WIDTH_PERCENT, 59),
-                lineAlphaPercent = sp.getInt(KEY_LINE_ALPHA_PERCENT, 72),
-                lineColor = sp.getInt(KEY_LINE_COLOR, Color.parseColor("#4285F4")),
-                lineGradientEnabled = sp.getBoolean(KEY_LINE_GRADIENT, true),
-                lineIsDotted = sp.getBoolean(KEY_LINE_IS_DOTTED, false),
 
                 manualHideEnabled = sp.getBoolean(KEY_MANUAL_HIDE_ENABLED, false),
                 manualHideWakeType = sp.getInt(KEY_MANUAL_HIDE_WAKE_TYPE, 0),

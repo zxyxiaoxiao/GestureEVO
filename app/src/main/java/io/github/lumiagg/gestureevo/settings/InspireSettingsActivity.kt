@@ -64,6 +64,9 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_ALWAYS_SHOW_POINTER_TOUCH_AREA = "key_always_show_pointer_touch_area"
         const val KEY_POINTER_TOUCH_AREA_OFFSET_DP = "key_pointer_touch_area_offset_dp"
         const val KEY_ENABLE_POINTER_DRAG_MODE = "key_enable_pointer_drag_mode"
+        // === CUSTOM EXTENSION START ===
+        const val KEY_POINTER_FIXED_AREA = "key_pointer_fixed_area"
+        // === CUSTOM EXTENSION END ===
         const val KEY_PIN_POOL_DISPLAY_MODE = "key_pin_pool_display_mode"
         const val KEY_PIN_POOL_LOCAL_RULE_EXTRACTION = "key_pin_pool_local_rule_extraction"
         const val DEFAULT_PIN_POOL_LOCAL_RULE_EXTRACTION = false
@@ -152,6 +155,11 @@ class InspireSettingsActivity : AppCompatActivity() {
 
         binding.pointerDragModeSwitch.isChecked =
             settingsStore.readKey(KEY_ENABLE_POINTER_DRAG_MODE, false)
+
+        // === CUSTOM EXTENSION START ===
+        binding.pointerFixedAreaSwitch.isChecked =
+            settingsStore.readKey(KEY_POINTER_FIXED_AREA, false)
+        // === CUSTOM EXTENSION END ===
 
         val pinPoolDisplayMode =
             settingsStore.readKey(KEY_PIN_POOL_DISPLAY_MODE, PIN_POOL_DISPLAY_MODE_RIGHT_SIDEBAR)
@@ -399,6 +407,14 @@ class InspireSettingsActivity : AppCompatActivity() {
                 settingsStore.saveKey(KEY_ENABLE_POINTER_DRAG_MODE, isChecked)
             }
         }
+
+        // === CUSTOM EXTENSION START ===
+        binding.pointerFixedAreaSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_POINTER_FIXED_AREA, isChecked)
+            }
+        }
+        // === CUSTOM EXTENSION END ===
 
         binding.pinPoolModeRow.setOnClickListener {
             showPinPoolModeDialog()

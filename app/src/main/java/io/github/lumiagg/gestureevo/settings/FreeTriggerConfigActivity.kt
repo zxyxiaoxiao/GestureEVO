@@ -143,6 +143,11 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             feedbackSwitch.isChecked = trigger.getState(FreeTriggerConfig.FLAG_FEEDBACK)
             feedbackSwitch.isEnabled = true
 
+            // === CUSTOM EXTENSION START ===
+            belowGestureBarSwitch.isChecked = trigger.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)
+            followBallSwitch.isChecked = trigger.getState(FreeTriggerConfig.FLAG_FOLLOW_BALL)
+            // === CUSTOM EXTENSION END ===
+
             xPositionSlider.value = trigger.xRelativeValue
             xPositionSlider.addOnSliderTouchListener(createSliderTouchListener())
             yPositionSlider.value = trigger.yRelativeValue
@@ -442,6 +447,10 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
                 followTriggerPointSwitch.isChecked
             )
             trigger.setState(FreeTriggerConfig.FLAG_FEEDBACK, feedbackSwitch.isChecked)
+            // === CUSTOM EXTENSION START ===
+            trigger.setState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR, belowGestureBarSwitch.isChecked)
+            trigger.setState(FreeTriggerConfig.FLAG_FOLLOW_BALL, followBallSwitch.isChecked)
+            // === CUSTOM EXTENSION END ===
             trigger.setQuadrant(pieConfigQuadrant.getQuadrantClickedList())
         }
 

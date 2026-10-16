@@ -5,53 +5,126 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
+    <!-- 模式切换：单选芯片组 -->
     <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="位置模式"
+        android:textAppearance="?attr/textAppearanceTitleSmall"
+        android:textColor="?attr/colorOnSurface" />
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroupPositionMode"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center"
-        android:text="可直接在上方微缩屏幕中拖拽小球，或在下方输入精确像素"
-        android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="?attr/colorOutline" />
+        android:layout_marginTop="8dp"
+        app:selectionRequired="true"
+        app:singleSelection="true">
 
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipModeCustom"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="自定义位置" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipModeFollowTrigger"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="始终跟随触发器" />
+    </com.google.android.material.chip.ChipGroup>
+
+    <!-- 自定义位置容器 -->
     <LinearLayout
+        android:id="@+id/containerCustomPos"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:orientation="horizontal">
+        android:orientation="vertical">
 
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutPosX"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="0dp"
+        <TextView
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="X 坐标 (px)">
+            android:gravity="center"
+            android:text="可在上方微缩屏幕中拖拽小球，或在下方输入精确像素"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOutline" />
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etPosX"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <Space
-            android:layout_width="16dp"
-            android:layout_height="1dp" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/layoutPosY"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:hint="Y 坐标 (px)">
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etPosY"
-                android:layout_width="match_parent"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutPosX"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:layout_weight="1"
+                android:hint="X 坐标 (px)">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etPosX"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <Space
+                android:layout_width="16dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/layoutPosY"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Y 坐标 (px)">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etPosY"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="number" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 跟随触发器选择容器 -->
+    <LinearLayout
+        android:id="@+id/containerFollowTrigger"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="请选择悬浮球跟随的目标触发器："
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?attr/colorOutline" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupTriggers"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipTriggerAll"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="全部触发器" />
+        </com.google.android.material.chip.ChipGroup>
     </LinearLayout>
 
 </LinearLayout>

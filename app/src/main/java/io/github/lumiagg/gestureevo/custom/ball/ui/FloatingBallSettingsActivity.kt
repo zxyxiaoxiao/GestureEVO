@@ -18,7 +18,6 @@ import io.github.lumiagg.gestureevo.custom.ball.ui.dialogs.BallManualHideDialog
 import io.github.lumiagg.gestureevo.custom.ball.ui.dialogs.BallPositionDialog
 import io.github.lumiagg.gestureevo.custom.ball.ui.dialogs.BallSliderDialog
 import io.github.lumiagg.gestureevo.custom.ball.ui.dialogs.BallStyleDialog
-import io.github.lumiagg.gestureevo.custom.ball.ui.dialogs.LineStyleDialog
 import io.github.lumiagg.gestureevo.custom.ball.util.FloatingBallPermissionHelper
 import java.io.File
 import java.io.FileOutputStream
@@ -39,11 +38,6 @@ class FloatingBallSettingsActivity : AppCompatActivity() {
     private lateinit var tvBallAlphaVal: TextView
     private lateinit var tvBallPosVal: TextView
     private lateinit var tvBallStyleVal: TextView
-
-    private lateinit var tvLineHeightVal: TextView
-    private lateinit var tvLineWidthVal: TextView
-    private lateinit var tvLineAlphaVal: TextView
-    private lateinit var tvLineStyleVal: TextView
 
     private lateinit var tvManualHideVal: TextView
     private lateinit var tvAutoHideListVal: TextView
@@ -88,11 +82,6 @@ class FloatingBallSettingsActivity : AppCompatActivity() {
         tvBallAlphaVal = findViewById(R.id.tvBallAlphaVal)
         tvBallPosVal = findViewById(R.id.tvBallPosVal)
         tvBallStyleVal = findViewById(R.id.tvBallStyleVal)
-
-        tvLineHeightVal = findViewById(R.id.tvLineHeightVal)
-        tvLineWidthVal = findViewById(R.id.tvLineWidthVal)
-        tvLineAlphaVal = findViewById(R.id.tvLineAlphaVal)
-        tvLineStyleVal = findViewById(R.id.tvLineStyleVal)
 
         tvManualHideVal = findViewById(R.id.tvManualHideVal)
         tvAutoHideListVal = findViewById(R.id.tvAutoHideListVal)
@@ -163,36 +152,7 @@ class FloatingBallSettingsActivity : AppCompatActivity() {
             )
         }
 
-        // 分组2：线
-        findViewById<LinearLayout>(R.id.rowLineHeight).setOnClickListener {
-            BallSliderDialog.show(this, BallSliderDialog.SliderType.LINE_HEIGHT) {
-                config = it
-                refreshItemSummary()
-            }
-        }
-
-        findViewById<LinearLayout>(R.id.rowLineWidth).setOnClickListener {
-            BallSliderDialog.show(this, BallSliderDialog.SliderType.LINE_WIDTH) {
-                config = it
-                refreshItemSummary()
-            }
-        }
-
-        findViewById<LinearLayout>(R.id.rowLineAlpha).setOnClickListener {
-            BallSliderDialog.show(this, BallSliderDialog.SliderType.LINE_ALPHA) {
-                config = it
-                refreshItemSummary()
-            }
-        }
-
-        findViewById<LinearLayout>(R.id.rowLineStyle).setOnClickListener {
-            LineStyleDialog.show(this) {
-                config = it
-                refreshItemSummary()
-            }
-        }
-
-        // 分组3：隐藏设置
+        // 隐藏设置
         findViewById<LinearLayout>(R.id.rowManualHide).setOnClickListener {
             BallManualHideDialog.show(this) {
                 config = it
@@ -212,14 +172,12 @@ class FloatingBallSettingsActivity : AppCompatActivity() {
         tvBallSizeVal.text = "${config.sizePercent}%"
         tvBallInnerRatioVal.text = "${config.innerRatioPercent}%"
         tvBallAlphaVal.text = "${config.iconAlphaPercent}%"
-        tvBallPosVal.text = "X: ${config.posX}, Y: ${config.posY}"
+        tvBallPosVal.text = if (config.positionMode == 1) {
+            if (config.followTriggerTag.isBlank()) "始终跟随触发器 (全部)" else "始终跟随触发器 (${config.followTriggerTag})"
+        } else {
+            "自定义 (X: ${config.posX}, Y: ${config.posY})"
+        }
         tvBallStyleVal.text = if (config.iconStyleType == 1) "自定义图片" else "预设圆形模板"
-
-        tvLineHeightVal.text = "${config.lineHeightPercent}%"
-        tvLineWidthVal.text = "${config.lineWidthPercent}%"
-        tvLineAlphaVal.text = "${config.lineAlphaPercent}%"
-        val lineStyleStr = "${if (config.lineGradientEnabled) "渐变" else "单色"} · ${if (config.lineIsDotted) "虚线" else "实线"}"
-        tvLineStyleVal.text = lineStyleStr
 
         tvManualHideVal.text = if (config.manualHideEnabled) {
             "已开启 (${if (config.manualHideWakeType == 1) "手势唤起" else "通知点击唤起"})"

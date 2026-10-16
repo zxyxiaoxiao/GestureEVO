@@ -54,4 +54,25 @@ object FloatingBallManager {
     fun onForegroundPackageChanged(context: Context, pkgName: String) {
         FloatingBallService.notifyForegroundApp(context, pkgName)
     }
+
+    /**
+     * 触发器按压联动：在指定屏幕坐标显示悬浮球
+     */
+    fun showAt(context: Context, rawX: Float, rawY: Float) {
+        FloatingBallService.instance?.showAtPoint(rawX, rawY)
+    }
+
+    /**
+     * 触发器按压移动联动：跟随手指更新坐标
+     */
+    fun updateFollowPosition(context: Context, rawX: Float, rawY: Float) {
+        FloatingBallService.instance?.updateFollowPoint(rawX, rawY)
+    }
+
+    /**
+     * 触发器手指释放联动：悬浮球归位并隐藏
+     */
+    fun resetAndHideFollowBall(context: Context) {
+        FloatingBallService.instance?.resetAndHideTriggerFollow()
+    }
 }

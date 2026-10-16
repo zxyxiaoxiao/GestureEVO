@@ -219,6 +219,16 @@ class FreeTriggerFloating(
                 },
             )
 
+            // === CUSTOM EXTENSION START ===
+            if (config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR) &&
+                android.provider.Settings.canDrawOverlays(context)
+            ) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                }
+            }
+            // === CUSTOM EXTENSION END ===
+
             x = bounds.left
             y = bounds.top
         }

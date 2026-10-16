@@ -84,22 +84,38 @@ class GestureService : AccessibilityService(), CoroutineScope {
             initShizukuService(applicationContext)
         }
         // === CUSTOM EXTENSION START ===
-        io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.init(this)
+        try {
+            io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.init(this)
+        } catch (_: Exception) {}
         // === CUSTOM EXTENSION END ===
     }
 
     private fun initReceiver() {
-        val filter = IntentFilter()
-        filter.addAction(Intent.ACTION_SCREEN_OFF)
-        filter.addAction(Intent.ACTION_SCREEN_ON)
-        filter.addAction(Intent.ACTION_USER_PRESENT)
-        filter.addAction(Intent.ACTION_CONFIGURATION_CHANGED)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(gestureBroadcastReceiver, filter, RECEIVER_EXPORTED)
-        } else {
-            registerReceiver(gestureBroadcastReceiver, filter)
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_CONFIGURATION_CHANGED)
         }
-        gestureBroadcastReceiver.isReceiverRegistered = true
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(gestureBroadcastReceiver, filter, RECEIVER_NOT_EXPORTED)
+            } else {
+                registerReceiver(gestureBroadcastReceiver, filter)
+            }
+            gestureBroadcastReceiver.isReceiverRegistered = true
+        } catch (e: Exception) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    registerReceiver(gestureBroadcastReceiver, filter, RECEIVER_EXPORTED)
+                } else {
+                    registerReceiver(gestureBroadcastReceiver, filter)
+                }
+                gestureBroadcastReceiver.isReceiverRegistered = true
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to register gestureBroadcastReceiver", e2)
+            }
+        }
     }
 
     override fun onCreate() {

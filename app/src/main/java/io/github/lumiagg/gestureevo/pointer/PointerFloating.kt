@@ -86,6 +86,9 @@ class PointerFloating(
     var needShowTouchView = false
     private var alwaysShowTouchArea = false
     private var touchAreaOffsetDp = 0
+    // === CUSTOM EXTENSION START ===
+    private var pointerFixedArea = false
+    // === CUSTOM EXTENSION END ===
     private var pointerVisibleRequested = false
     var triggerSide: String? = null
 
@@ -315,6 +318,12 @@ class PointerFloating(
             KEY_POINTER_TOUCH_AREA_OFFSET_DP,
             0
         ).coerceIn(-100, 100)
+        // === CUSTOM EXTENSION START ===
+        pointerFixedArea = context.settingsStore.readKey(
+            io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.KEY_POINTER_FIXED_AREA,
+            false
+        )
+        // === CUSTOM EXTENSION END ===
     }
 
     // Trail View class to draw the pointer's trail
@@ -709,6 +718,15 @@ class PointerFloating(
                         (view.y + view.height / 2).coerceAtLeast(0f)
                     )
                 }
+
+                // === CUSTOM EXTENSION START ===
+                if (pointerFixedArea) {
+                    val offsetPx = 21.5f.dp2px
+                    val targetX = touchViewX.coerceIn(0f, screenWidth.toFloat())
+                    val targetY = (touchViewY - offsetPx).coerceIn(0f, screenHeight.toFloat())
+                    return Point(targetX, targetY)
+                }
+                // === CUSTOM EXTENSION END ===
 
                 val touchViewLocation = IntArray(2)
                 touchView.getLocationOnScreen(touchViewLocation)

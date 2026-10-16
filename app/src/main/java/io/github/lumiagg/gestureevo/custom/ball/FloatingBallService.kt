@@ -22,10 +22,6 @@ import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import androidx.core.app.NotificationCompat
 import io.github.lumiagg.gestureevo.R
-import io.github.lumiagg.gestureevo.gesture.EventBusManager.produceInspireEvent
-import io.github.lumiagg.gestureevo.gesture.InspireEvent
-import io.github.lumiagg.gestureevo.gesture.TriggerSide
-import io.github.lumiagg.gestureevo.inspire.InspireContentActivity
 import io.github.lumiagg.gestureevo.utils.ActionProxy
 import io.github.lumiagg.gestureevo.utils.ScreenUtil
 import io.github.lumiagg.gestureevo.utils.dp2px
@@ -34,7 +30,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 /**
- * 独立前台服务：管理悬浮球渲染、状态切换、前台通知与事件监听
+ * 独立前台服务：管理悬浮球渲染、状态切换、全屏拖动定位与触发器跟随联动
  */
 class FloatingBallService : Service() {
 
@@ -49,6 +45,7 @@ class FloatingBallService : Service() {
     private var isTemporarilyHiddenByApp = false
     private var isTemporarilyHiddenByScreen = false
     private var isManualHidden = false
+    private var isTemporarilyShowingForTrigger = false
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -209,7 +206,8 @@ class FloatingBallService : Service() {
 
     private fun refreshBallVisibility() {
         val view = ballView ?: return
-        val visible = !isManualHidden && !isTemporarilyHiddenByApp && !isTemporarilyHiddenByScreen && config.isEnabled
+        val normalVisible = !isManualHidden && !isTemporarilyHiddenByApp && !isTemporarilyHiddenByScreen && config.isEnabled
+        val visible = normalVisible || isTemporarilyShowingForTrigger
         view.visibility = if (visible) View.VISIBLE else View.GONE
     }
 
@@ -244,16 +242,15 @@ class FloatingBallService : Service() {
 
         val view = FloatingBallView(this, config).apply {
             onActionTrigger = { actionLink -> dispatchAction(actionLink) }
-            onRequestFullScreenLayout = { isFullScreen ->
-                switchWindowLayout(isFullScreen)
+            onPositionMoved = { _, _, deltaX, deltaY ->
+                updatePositionDelta(deltaX, deltaY)
             }
-            onDragSelectCompleted = { selectRect ->
-                handleDragSelectCompleted(selectRect)
-            }
-            onPositionSaved = { newX, newY ->
-                config.posX = newX
-                config.posY = newY
-                config.save(this@FloatingBallService)
+            onDragFinished = { _, _ ->
+                if (config.autoSnapToEdge) {
+                    snapToEdge()
+                } else {
+                    saveCurrentPosition()
+                }
             }
         }
         this.ballView = view
@@ -265,50 +262,6 @@ class FloatingBallService : Service() {
             Log.d(TAG, "FloatingBall attached at (${params.x}, ${params.y})")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to attach FloatingBall", e)
-        }
-    }
-
-    private fun switchWindowLayout(isFullScreen: Boolean) {
-        val params = layoutParams ?: return
-        val view = ballView ?: return
-        val wm = windowManager ?: return
-
-        if (isFullScreen) {
-            params.width = WindowManager.LayoutParams.MATCH_PARENT
-            params.height = WindowManager.LayoutParams.MATCH_PARENT
-            params.x = 0
-            params.y = 0
-        } else {
-            val sizePx = config.getActualSizeDp().dp2px.toInt()
-            params.width = sizePx
-            params.height = sizePx
-            params.x = config.posX
-            params.y = config.posY
-        }
-
-        try {
-            wm.updateViewLayout(view, params)
-        } catch (e: Exception) {
-            Log.e(TAG, "switchWindowLayout error", e)
-        }
-    }
-
-    private fun handleDragSelectCompleted(selectRect: android.graphics.Rect) {
-        val screenW = ScreenUtil.getScreenWidth(this)
-        val side = if (selectRect.centerX() < screenW / 2) TriggerSide.LEFT else TriggerSide.RIGHT
-
-        CoroutineScope(Dispatchers.Main).launch {
-            try {
-                // 优先广播区域提取事件供 DOM 树和 OCR 处理
-                produceInspireEvent(InspireEvent(rect = selectRect, side = side))
-                // 直接调起本软件强大的 InspireContentActivity 界面
-                InspireContentActivity.start(this@FloatingBallService)
-            } catch (e: Exception) {
-                Log.e(TAG, "handleDragSelectCompleted error", e)
-                try {
-                    InspireContentActivity.start(this@FloatingBallService)
-                } catch (_: Exception) {}
-            }
         }
     }
 
@@ -398,6 +351,65 @@ class FloatingBallService : Service() {
         config.posX = params.x
         config.posY = params.y
         config.save(this)
+    }
+
+    /**
+     * 触发器手指按下：悬浮球显示在手指按压位置
+     */
+    fun showAtPoint(screenX: Float, screenY: Float) {
+        if (!canDrawOverlays()) return
+        if (!isBallAdded) {
+            attachBallView()
+        }
+        val params = layoutParams ?: return
+        val view = ballView ?: return
+        val wm = windowManager ?: return
+
+        val ballSize = config.getActualSizeDp().dp2px.toInt()
+        params.x = (screenX - ballSize / 2f).toInt()
+        params.y = (screenY - ballSize / 2f).toInt()
+
+        isTemporarilyShowingForTrigger = true
+        view.visibility = View.VISIBLE
+        try {
+            wm.updateViewLayout(view, params)
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * 触发器手指移动：悬浮球跟随移动
+     */
+    fun updateFollowPoint(screenX: Float, screenY: Float) {
+        val params = layoutParams ?: return
+        val view = ballView ?: return
+        val wm = windowManager ?: return
+
+        val ballSize = config.getActualSizeDp().dp2px.toInt()
+        params.x = (screenX - ballSize / 2f).toInt()
+        params.y = (screenY - ballSize / 2f).toInt()
+
+        try {
+            wm.updateViewLayout(view, params)
+        } catch (_: Exception) {}
+    }
+
+    /**
+     * 触发器手指松开：悬浮球归位并隐藏
+     */
+    fun resetAndHideTriggerFollow() {
+        isTemporarilyShowingForTrigger = false
+        val params = layoutParams ?: return
+        val view = ballView ?: return
+        val wm = windowManager ?: return
+
+        // 归位到原配置坐标
+        params.x = config.posX
+        params.y = config.posY
+        try {
+            wm.updateViewLayout(view, params)
+        } catch (_: Exception) {}
+
+        refreshBallVisibility()
     }
 
     private fun dispatchAction(actionLink: String) {

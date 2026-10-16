@@ -20,10 +20,7 @@ object BallSliderDialog {
     enum class SliderType {
         BALL_SIZE,         // 图标大小调节
         BALL_INNER_RATIO,  // 图标内部占比调节
-        BALL_ALPHA,        // 图标透明度调节
-        LINE_HEIGHT,       // 菜单线条高度调节
-        LINE_WIDTH,        // 菜单线条宽度调节
-        LINE_ALPHA         // 菜单线条透明度调节
+        BALL_ALPHA         // 图标透明度调节
     }
 
     fun show(
@@ -47,17 +44,14 @@ object BallSliderDialog {
         val slider = sliderView.findViewById<Slider>(R.id.slider)
 
         // 配置默认值与初始值
-        val (titleText, defaultValue, initialValue, isLineMode) = when (type) {
-            SliderType.BALL_SIZE -> Quadruple("图标大小调节", 100, workingConfig.sizePercent, false)
-            SliderType.BALL_INNER_RATIO -> Quadruple("图标内部占比调节", 100, workingConfig.innerRatioPercent, false)
-            SliderType.BALL_ALPHA -> Quadruple("图标透明度调节", 50, workingConfig.iconAlphaPercent, false)
-            SliderType.LINE_HEIGHT -> Quadruple("菜单线条高度调节", 20, workingConfig.lineHeightPercent, true)
-            SliderType.LINE_WIDTH -> Quadruple("菜单线条宽度调节", 59, workingConfig.lineWidthPercent, true)
-            SliderType.LINE_ALPHA -> Quadruple("菜单线条透明度调节", 72, workingConfig.lineAlphaPercent, true)
+        val (titleText, defaultValue, initialValue) = when (type) {
+            SliderType.BALL_SIZE -> Triple("图标大小调节", 100, workingConfig.sizePercent)
+            SliderType.BALL_INNER_RATIO -> Triple("图标内部占比调节", 100, workingConfig.innerRatioPercent)
+            SliderType.BALL_ALPHA -> Triple("图标透明度调节", 50, workingConfig.iconAlphaPercent)
         }
 
         tvTitle.text = titleText
-        previewView.mode = if (isLineMode) FloatingBallPreviewView.PreviewMode.LINE_STYLE else FloatingBallPreviewView.PreviewMode.BALL_ICON
+        previewView.mode = FloatingBallPreviewView.PreviewMode.BALL_ICON
         previewView.config = workingConfig
 
         fun applyValueToConfig(value: Int) {
@@ -65,9 +59,6 @@ object BallSliderDialog {
                 SliderType.BALL_SIZE -> workingConfig.sizePercent = value
                 SliderType.BALL_INNER_RATIO -> workingConfig.innerRatioPercent = value
                 SliderType.BALL_ALPHA -> workingConfig.iconAlphaPercent = value
-                SliderType.LINE_HEIGHT -> workingConfig.lineHeightPercent = value
-                SliderType.LINE_WIDTH -> workingConfig.lineWidthPercent = value
-                SliderType.LINE_ALPHA -> workingConfig.lineAlphaPercent = value
             }
             tvSliderValue.text = "$value%"
             previewView.config = workingConfig
