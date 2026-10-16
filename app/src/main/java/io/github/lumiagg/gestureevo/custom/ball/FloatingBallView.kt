@@ -178,7 +178,9 @@ class FloatingBallView(
                 val totalDy = event.rawY - downRawY
                 val totalDist = hypot(totalDx, totalDy)
 
-                if (!isDragging && totalDist > touchSlop) {
+                // 跟随触发器模式下禁止拖拽移动位置
+                val canDragMove = config.positionMode != 1
+                if (canDragMove && !isDragging && totalDist > touchSlop) {
                     isDragging = true
                     mainHandler.removeCallbacks(singleClickRunnable)
                 }

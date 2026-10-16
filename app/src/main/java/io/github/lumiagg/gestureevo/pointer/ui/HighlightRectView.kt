@@ -65,10 +65,17 @@ class HighlightRectView(context: Context) : View(context) {
         if (enable) invalidate()
     }
 
-    fun showPotentialRect(rect: Rect) = post {
+    // === CUSTOM EXTENSION START ===
+    fun showPotentialRect(rect: Rect, isConfirmed: Boolean = false) = post {
         potentialRect = Rect(rect)
+        // 绿色为预选(#4CAF50)，停留两倍时间后变为黄色(#FFC107)为真实选中
+        val color = if (isConfirmed) Color.rgb(0xFF, 0xC1, 0x07) else Color.rgb(0x4C, 0xAF, 0x50)
+        potentialStrokePaint.color = color
+        potentialStrokePaint.strokeWidth = if (isConfirmed) 3f.dp2px else 2.5f.dp2px
+        potentialFillPaint.color = Color.argb(if (isConfirmed) 48 else 32, Color.red(color), Color.green(color), Color.blue(color))
         invalidate()
     }
+    // === CUSTOM EXTENSION END ===
 
     fun hidePotentialRect() = post {
         potentialRect = null

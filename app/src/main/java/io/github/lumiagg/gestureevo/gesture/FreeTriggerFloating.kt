@@ -178,6 +178,11 @@ class FreeTriggerFloating(
             viewGroup.mirrorView?.let { detachViewSafely(it, immediate = false) }
             viewGroup.mirrorView = null
         }
+        // === CUSTOM EXTENSION START ===
+        if (io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.config.positionMode == 1) {
+            io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.refresh(context)
+        }
+        // === CUSTOM EXTENSION END ===
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -212,16 +217,14 @@ class FreeTriggerFloating(
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
-            if (config.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)) {
+            val belowKeyboard = config.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)
+            val belowGestureBar = config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)
+            if (belowKeyboard || belowGestureBar) {
                 windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
-            }
-
-            // === CUSTOM EXTENSION START ===
-            if (config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)) {
-                windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
+                // === CUSTOM EXTENSION START ===
                 windowFlags = windowFlags and WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS.inv()
+                // === CUSTOM EXTENSION END ===
             }
-            // === CUSTOM EXTENSION END ===
 
             configureAccessibilityOverlay(
                 windowFlags,

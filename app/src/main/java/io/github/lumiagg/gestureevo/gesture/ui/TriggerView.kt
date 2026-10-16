@@ -797,7 +797,9 @@ class TriggerView @JvmOverloads constructor(
     fun updateSystemGestureExclusion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // === CUSTOM EXTENSION START ===
-            if (triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)) {
+            if (triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR) ||
+                triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)
+            ) {
                 systemGestureExclusionRects = emptyList()
                 return
             }

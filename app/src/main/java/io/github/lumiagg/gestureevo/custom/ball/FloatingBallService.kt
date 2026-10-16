@@ -380,7 +380,8 @@ class FloatingBallService : Service() {
 
         val ballSize = config.getActualSizeDp().dp2px.toInt()
         params.x = (screenX - ballSize / 2f).toInt()
-        params.y = (screenY - ballSize / 2f).toInt()
+        // 整体上移50%
+        params.y = (screenY - ballSize / 2f - ballSize * 0.5f).toInt()
 
         isTemporarilyShowingForTrigger = true
         view.visibility = View.VISIBLE
@@ -403,7 +404,8 @@ class FloatingBallService : Service() {
 
         val ballSize = config.getActualSizeDp().dp2px.toInt()
         params.x = (screenX - ballSize / 2f).toInt()
-        params.y = (screenY - ballSize / 2f).toInt()
+        // 整体上移50%
+        params.y = (screenY - ballSize / 2f - ballSize * 0.5f).toInt()
 
         try {
             wm.updateViewLayout(view, params)
@@ -451,11 +453,8 @@ class FloatingBallService : Service() {
                     val bounds = freeTriggerBounds(this, target, false)
                     val screenW = ScreenUtil.getScreenWidth(this)
                     val screenH = ScreenUtil.getScreenHeight(this)
-                    val posX = if (bounds.centerX() < screenW / 2) {
-                        0
-                    } else {
-                        (screenW - ballSizePx).coerceAtLeast(0)
-                    }
+                    // 确保始终显示在触发区域中间位置（横纵双向居中）
+                    val posX = (bounds.centerX() - ballSizePx / 2).coerceIn(0, (screenW - ballSizePx).coerceAtLeast(0))
                     val posY = (bounds.centerY() - ballSizePx / 2).coerceIn(0, (screenH - ballSizePx).coerceAtLeast(0))
                     return Pair(posX, posY)
                 }
