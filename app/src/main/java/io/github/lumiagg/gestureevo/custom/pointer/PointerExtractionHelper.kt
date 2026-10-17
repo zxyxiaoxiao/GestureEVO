@@ -102,4 +102,97 @@ object PointerExtractionHelper {
             }
         }
     }
+
+    /**
+     * 针对真实选中的控件位置（bounds），深度抓取该控件的所有文本内容
+     * 确保比如“手机聊天输入框里输入了几百上千字，大部分被隐藏”，也能直接把整个输入框的所有内容抓取出来
+     */
+    fun extractFullTextForNodeBounds(
+        service: AccessibilityService,
+        bounds: android.graphics.Rect
+    ): List<String>? {
+        val centerX = bounds.centerX()
+        val centerY = bounds.centerY()
+
+        // 1. 优先通过中心点或矩形区域毫秒级命中缓存节点
+        val cachedNode = NodeCacheManager.hitTest(centerX, centerY)
+            ?: NodeCacheManager.hitTest(bounds)
+
+        var realNode = if (cachedNode != null) {
+            NodeCacheManager.findRealNode(service, cachedNode)
+        } else null
+
+        // 2. 若缓存未反查到真实节点，尝试从活动窗口根节点回退查找
+        if (realNode == null) {
+            val roots = if (service is io.github.lumiagg.gestureevo.gesture.GestureService) {
+                io.github.lumiagg.gestureevo.inspire.getNeedWindowsRoot(service)
+            } else emptyList()
+            for (root in roots) {
+                realNode = findTargetNodeInHierarchy(root, bounds)
+                if (realNode != null) break
+            }
+        }
+
+        if (realNode != null) {
+            return try {
+                // 如果是输入框或可编辑节点，执行深度长文本提取（包含强制刷新、兄弟子树聚合、选区提取等）
+                if (realNode.isEditable || realNode.className?.contains("EditText", ignoreCase = true) == true) {
+                    val extractionResult = DeepTextExtractor.getFullTextFromEditableNode(service, realNode)
+                    val fullText = extractionResult.text
+                    if (!fullText.isNullOrBlank()) {
+                        Log.d(TAG, "extractFullTextForNodeBounds extracted ${fullText.length} chars from editable node")
+                        return listOf(fullText)
+                    }
+                }
+                // 非输入框或普通控件：直接读取完整的控件文本，杜绝字符位置过滤
+                val nodeText = realNode.text?.toString()
+                if (!nodeText.isNullOrBlank()) {
+                    Log.d(TAG, "extractFullTextForNodeBounds read direct text: ${nodeText.take(50)}")
+                    return listOf(nodeText)
+                }
+                null
+            } finally {
+                runCatching {
+                    if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R) {
+                        @Suppress("DEPRECATION")
+                        realNode.recycle()
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    private fun findTargetNodeInHierarchy(
+        root: AccessibilityNodeInfo,
+        targetBounds: android.graphics.Rect
+    ): AccessibilityNodeInfo? {
+        val queue = java.util.ArrayDeque<AccessibilityNodeInfo>()
+        queue.add(root)
+        var bestMatch: AccessibilityNodeInfo? = null
+        var minAreaDiff = Long.MAX_VALUE
+
+        val nodeRect = android.graphics.Rect()
+        while (!queue.isEmpty()) {
+            val node = queue.poll() ?: continue
+            node.getBoundsInScreen(nodeRect)
+            if (android.graphics.Rect.intersects(nodeRect, targetBounds) || nodeRect == targetBounds) {
+                if (!node.text.isNullOrBlank()) {
+                    val areaDiff = Math.abs((nodeRect.width() * nodeRect.height()) - (targetBounds.width() * targetBounds.height())).toLong()
+                    if (areaDiff < minAreaDiff) {
+                        minAreaDiff = areaDiff
+                        bestMatch = node
+                    }
+                }
+            }
+            for (i in 0 until node.childCount) {
+                val child = node.getChild(i)
+                if (child != null) {
+                    queue.add(child)
+                }
+            }
+        }
+        return bestMatch
+    }
 }
+

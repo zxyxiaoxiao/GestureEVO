@@ -599,14 +599,24 @@ class InspireFloating(private val context: GestureService) :
 
                 val accessibilityJob = async {
                     val words = mutableListOf<String>()
-                    for (copyNode in getScreenContent(context, safeRect)) {
-                        val nodeBound = copyNode.bound
-                        // 过滤掉明显大于框选区域的父级全屏容器，确保只获取框选栏内的文字
-                        val isOverLargeParent = nodeBound.width() > safeRect.width() * 2 && nodeBound.height() > safeRect.height() * 2
-                        if (!isOverLargeParent) {
-                            copyNode.content?.let { if (it.isNotBlank()) words.add(it) }
-                        }
+                    // === CUSTOM EXTENSION START ===
+                    if (InspireDataHolder.isCapturedFromNodeBounds) {
+                        io.github.lumiagg.gestureevo.custom.pointer.PointerExtractionHelper
+                            .extractFullTextForNodeBounds(context, safeRect)?.let { words.addAll(it) }
                     }
+                    if (words.isEmpty()) {
+                    // === CUSTOM EXTENSION END ===
+                        for (copyNode in getScreenContent(context, safeRect)) {
+                            val nodeBound = copyNode.bound
+                            // 过滤掉明显大于框选区域的父级全屏容器，确保只获取框选栏内的文字
+                            val isOverLargeParent = nodeBound.width() > safeRect.width() * 2 && nodeBound.height() > safeRect.height() * 2
+                            if (!isOverLargeParent) {
+                                copyNode.content?.let { if (it.isNotBlank()) words.add(it) }
+                            }
+                        }
+                    // === CUSTOM EXTENSION START ===
+                    }
+                    // === CUSTOM EXTENSION END ===
                     InspireDataHolder.accessibilityContent = words
                 }
 

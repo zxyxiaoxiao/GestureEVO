@@ -220,6 +220,9 @@ class PointerFloating(
         const val POINTER_SHOW_ANIMATION_DURATION = 140L
         const val POINTER_HIDE_ANIMATION_DURATION = 110L
         const val POINTER_ANIMATION_START_SCALE = 0.82f
+        // === CUSTOM EXTENSION START ===
+        const val CUSTOM_POINTER_SCALE = 0.84f // 指针放大20% (0.7f * 1.2f)
+        // === CUSTOM EXTENSION END ===
     }
 
     var enable = false
@@ -434,11 +437,11 @@ class PointerFloating(
 
         private fun applyYellowPlusStyle() {
             pointerIcon.apply {
-                setImageResource(R.drawable.baseline_add_24)
+                setImageResource(R.drawable.ic_custom_pointer_cross)
                 imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
                 background = null
-                scaleX = 0.7f
-                scaleY = 0.7f
+                scaleX = CUSTOM_POINTER_SCALE
+                scaleY = CUSTOM_POINTER_SCALE
                 setPadding(0, 0, 0, 0)
             }
         }
@@ -448,8 +451,8 @@ class PointerFloating(
             view.x = -100f
             view.y = -100f
             view.alpha = 1f
-            view.scaleX = 0.7f
-            view.scaleY = 0.7f
+            view.scaleX = CUSTOM_POINTER_SCALE
+            view.scaleY = CUSTOM_POINTER_SCALE
             applyYellowPlusStyle()
             trailView.clearTrail()
         }
@@ -457,14 +460,14 @@ class PointerFloating(
         fun showPointer() {
             view.animate().cancel()
             view.alpha = 0f
-            view.scaleX = POINTER_ANIMATION_START_SCALE * 0.7f
-            view.scaleY = POINTER_ANIMATION_START_SCALE * 0.7f
+            view.scaleX = POINTER_ANIMATION_START_SCALE * CUSTOM_POINTER_SCALE
+            view.scaleY = POINTER_ANIMATION_START_SCALE * CUSTOM_POINTER_SCALE
             view.visibility = View.VISIBLE
             applyYellowPlusStyle()
             view.animate()
                 .alpha(1f)
-                .scaleX(0.7f)
-                .scaleY(0.7f)
+                .scaleX(CUSTOM_POINTER_SCALE)
+                .scaleY(CUSTOM_POINTER_SCALE)
                 .setDuration(POINTER_SHOW_ANIMATION_DURATION)
                 .start()
         }
@@ -477,14 +480,14 @@ class PointerFloating(
             }
             view.animate()
                 .alpha(0f)
-                .scaleX(POINTER_ANIMATION_START_SCALE * 0.7f)
-                .scaleY(POINTER_ANIMATION_START_SCALE * 0.7f)
+                .scaleX(POINTER_ANIMATION_START_SCALE * CUSTOM_POINTER_SCALE)
+                .scaleY(POINTER_ANIMATION_START_SCALE * CUSTOM_POINTER_SCALE)
                 .setDuration(POINTER_HIDE_ANIMATION_DURATION)
                 .withEndAction {
                     view.visibility = View.INVISIBLE
                     view.alpha = 1f
-                    view.scaleX = 0.7f
-                    view.scaleY = 0.7f
+                    view.scaleX = CUSTOM_POINTER_SCALE
+                    view.scaleY = CUSTOM_POINTER_SCALE
                     onEnd()
                 }
                 .start()
@@ -589,11 +592,11 @@ class PointerFloating(
                 trailView.enable = false
                 trailView.clearTrail()
                 pointerIcon.apply {
-                    setImageResource(R.drawable.baseline_add_24)
+                    setImageResource(R.drawable.ic_custom_pointer_cross)
                     imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07)) // 黄色指针（预选）
                     background = null
-                    scaleX = 0.7f // +号缩小30%
-                    scaleY = 0.7f
+                    scaleX = CUSTOM_POINTER_SCALE
+                    scaleY = CUSTOM_POINTER_SCALE
                     setPadding(0, 0, 0, 0)
                 }
                 elementCapturedPoint = null
@@ -822,53 +825,12 @@ class PointerFloating(
                 }
 
                 // === CUSTOM EXTENSION START ===
-                if (pointerFixedArea) {
-                    val distPx = 41.5f.dp2px * 1.3f // 间距在现有基础上提升30% (53.95dp)
-                    val rad = Math.toRadians(40.0)
-                    val dxPx = (distPx * Math.cos(rad)).toFloat() // 约 41.328dp
-                    val dyPx = (distPx * Math.sin(rad) * 1.5).toFloat() // 垂直整体上移50% (约 52.017dp)
-                    val leftOffsetPx = 25f.dp2px // 整体向左偏移25dp
-                    val pointerRadius = if (view.width > 0) view.width / 2f else 15f.dp2px
-                    val minSafeY = if (screenStatusHeight > 0) screenStatusHeight.toFloat() else 0f
-
-                    val threshold40dp = 40f.dp2px
-
-                    val isRightTrigger = if (triggerSide != null) {
-                        triggerSide.equals(TriggerSide.RIGHT, ignoreCase = true)
-                    } else {
-                        if (initialTouchX >= 0f) initialTouchX >= screenWidth / 2f else touchViewX >= screenWidth / 2f
-                    }
-
-                    val dx = if (isRightTrigger) {
-                        // 从屏幕右侧边缘触发
-                        val distToRight = (screenWidth - touchViewX).coerceAtLeast(0f)
-                        if (distToRight >= threshold40dp) {
-                            // 手指在离屏幕边缘超过40dp：完全显示在内侧（左侧，-dxPx）
-                            -dxPx
-                        } else {
-                            // 手指在离屏幕边缘40dp以内：指针实时跟随手指的移动速度逐渐平滑调整位置（0dp完全靠右侧，40dp完全过渡到左侧，绝不突变跳闪）
-                            val progress = (distToRight / threshold40dp).coerceIn(0f, 1f)
-                            val smooth = progress * progress * (3f - 2f * progress)
-                            dxPx * (1f - 2f * smooth)
-                        }
-                    } else {
-                        // 从屏幕左侧边缘触发
-                        val distToLeft = touchViewX.coerceAtLeast(0f)
-                        if (distToLeft >= threshold40dp) {
-                            // 手指在离屏幕边缘超过40dp：完全显示在内侧（右侧，+dxPx）
-                            dxPx
-                        } else {
-                            // 手指在离屏幕边缘40dp以内：指针实时跟随手指的移动速度逐渐平滑调整位置（0dp完全靠左侧，40dp完全过渡到右侧，绝不突变跳闪）
-                            val progress = (distToLeft / threshold40dp).coerceIn(0f, 1f)
-                            val smooth = progress * progress * (3f - 2f * progress)
-                            dxPx * (-1f + 2f * smooth)
-                        }
-                    }
-
-                    // 整体向左偏移25dp，自适应边缘防裁切（不得从屏幕中消失）
-                    val targetX = (touchViewX + dx - leftOffsetPx).coerceIn(pointerRadius, screenWidth - pointerRadius)
-                    val targetY = (touchViewY - dyPx).coerceIn(minSafeY + pointerRadius, screenHeight - pointerRadius)
-                    return Point(targetX, targetY)
+                if (pointerFixedArea || followBallEnabled) {
+                    val pRadius = if (view.width > 0) view.width / 2f else 15f.dp2px
+                    return io.github.lumiagg.gestureevo.custom.pointer.PointerPositionCalculator.computePosition(
+                        touchViewX, touchViewY, screenWidth, screenHeight, screenStatusHeight,
+                        pRadius, triggerSide, initialTouchX
+                    )
                 }
                 // === CUSTOM EXTENSION END ===
 

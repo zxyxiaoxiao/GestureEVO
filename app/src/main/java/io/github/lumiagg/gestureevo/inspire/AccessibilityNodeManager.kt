@@ -95,14 +95,10 @@ suspend fun getScreenContent(
             node.text ?: return@processAccessibilityNodesInParallel null
         if (text.isNotEmpty()) {
             if (Rect.intersects(rect, outBounds) || rect.contains(outBounds)) {
-                return@processAccessibilityNodesInParallel when {
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.O -> getCharacterLocations(
-                        node,
-                        rect
-                    )
-
-                    else -> ScreenContentNode(outBounds, text.toString())
-                }
+                // === CUSTOM EXTENSION START ===
+                // 从字符位置改为控件位置获取屏幕元素内容，直接返回控件完整文本
+                return@processAccessibilityNodesInParallel ScreenContentNode(outBounds, text.toString())
+                // === CUSTOM EXTENSION END ===
             }
         }
         return@processAccessibilityNodesInParallel null
