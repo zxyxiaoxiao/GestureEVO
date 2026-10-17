@@ -17,6 +17,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import me.fleey.ppocrv5.ocr.AcceleratorType
 import me.fleey.ppocrv5.ocr.OcrEngine
 import me.fleey.ppocrv5.ocr.OcrResult
@@ -34,16 +39,31 @@ object MlKitOcr {
     private val engineUseMutex = Mutex()
     private val preloadScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var preloadedEngine: OcrEngine? = null
+    private var mlKitRecognizer: TextRecognizer? = null
     private var preloadReleaseJob: Job? = null
     val taskRunning: Boolean
         get() = running.get()
     const val TAG = "MlKitOcr"
+
+    private fun getMlKitRecognizer(): TextRecognizer {
+        return mlKitRecognizer ?: synchronized(this) {
+            mlKitRecognizer ?: TextRecognition.getClient(
+                ChineseTextRecognizerOptions.Builder().build()
+            ).also { mlKitRecognizer = it }
+        }
+    }
 
     suspend fun preload() {
         preloadMutex.withLock {
             if (preloadedEngine == null) {
                 preloadedEngine = createEngine()
                 if (preloadedEngine == null) {
+                    try {
+                        getMlKitRecognizer()
+                        Log.d(TAG, "preload: ML Kit fallback OCR engine ready")
+                    } catch (t: Throwable) {
+                        Log.e(TAG, "preload: ML Kit init error", t)
+                    }
                     return
                 }
                 Log.d(TAG, "preload: OCR engine ready")
@@ -62,19 +82,24 @@ object MlKitOcr {
         withContext(Dispatchers.Default) {
             taskMutex.withLock {
                 val nodes = ArrayList<ScreenContentNode>()
-                if (img.width < 32 || img.height < 32) return@withLock nodes
+                if (img.width < 16 || img.height < 16) return@withLock nodes
                 running.set(true)
                 try {
                     AppLogger.event(
                         LogModule.OCR, "detect_started",
                         LogLevel.DEBUG,
                         fields = mapOf("width" to img.width, "height" to img.height))
+                    Log.d(TAG, "detect start")
                     withBuiltInEngine(retainPreloaded = false) { engine ->
                         processWithEngine(engine, img, nodes)
+                    }
+                    if (nodes.isEmpty()) {
+                        detectWithMlKit(img, nodes)
                     }
                     AppLogger.event(
                         LogModule.OCR, "detect_completed",
                         LogLevel.DEBUG, fields = mapOf("count" to nodes.size))
+                    Log.d(TAG, "detect complete, ${nodes.size} nodes")
                     nodes
                 } catch (e: kotlinx.coroutines.CancellationException) {
                     throw e
@@ -93,13 +118,16 @@ object MlKitOcr {
         withContext(Dispatchers.Default) {
             taskMutex.withLock {
                 val boxes = ArrayList<Rect>()
-                if (img.width < 32 || img.height < 32) return@withLock boxes
+                if (img.width < 16 || img.height < 16) return@withLock boxes
                 running.set(true)
                 try {
                     withBuiltInEngine(retainPreloaded = true) { engine ->
                         engine.detectTextBoxes(img).forEach { box ->
                             box.toRect(img.width, img.height)?.let(boxes::add)
                         }
+                    }
+                    if (boxes.isEmpty()) {
+                        detectTextBoxesWithMlKit(img, boxes)
                     }
                     boxes
                 } finally {
@@ -114,12 +142,59 @@ object MlKitOcr {
             if (img.width < 2 || img.height < 2) return@withLock ""
             running.set(true)
             try {
-                withBuiltInEngine(retainPreloaded = false) { engine ->
+                val text = withBuiltInEngine(retainPreloaded = false) { engine ->
                     engine.recognizeTextBox(img)?.text.orEmpty()
                 }.orEmpty()
+                if (text.isNotBlank()) {
+                    text
+                } else {
+                    recognizeTextBoxWithMlKit(img)
+                }
             } finally {
                 running.set(false)
             }
+        }
+    }
+
+    private fun detectWithMlKit(img: Bitmap, nodes: ArrayList<ScreenContentNode>) {
+        try {
+            val inputImage = InputImage.fromBitmap(img, 0)
+            val visionText = Tasks.await(getMlKitRecognizer().process(inputImage))
+            for (block in visionText.textBlocks) {
+                for (line in block.lines) {
+                    val box = line.boundingBox ?: continue
+                    if (line.text.isNotBlank()) {
+                        nodes.add(ScreenContentNode(box, line.text))
+                    }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "detectWithMlKit error", e)
+        }
+    }
+
+    private fun detectTextBoxesWithMlKit(img: Bitmap, boxes: ArrayList<Rect>) {
+        try {
+            val inputImage = InputImage.fromBitmap(img, 0)
+            val visionText = Tasks.await(getMlKitRecognizer().process(inputImage))
+            for (block in visionText.textBlocks) {
+                for (line in block.lines) {
+                    line.boundingBox?.let { boxes.add(it) }
+                }
+            }
+        } catch (e: Throwable) {
+            Log.e(TAG, "detectTextBoxesWithMlKit error", e)
+        }
+    }
+
+    private fun recognizeTextBoxWithMlKit(img: Bitmap): String {
+        return try {
+            val inputImage = InputImage.fromBitmap(img, 0)
+            val visionText = Tasks.await(getMlKitRecognizer().process(inputImage))
+            visionText.text
+        } catch (e: Throwable) {
+            Log.e(TAG, "recognizeTextBoxWithMlKit error", e)
+            ""
         }
     }
 
@@ -157,10 +232,14 @@ object MlKitOcr {
     private suspend fun releaseUnusedPreloadedEngine(reason: String) {
         engineUseMutex.withLock {
             preloadMutex.withLock {
-                val engine = preloadedEngine ?: return@withLock
-                engine.close()
+                val engine = preloadedEngine
+                engine?.close()
                 preloadedEngine = null
                 preloadReleaseJob = null
+                try {
+                    mlKitRecognizer?.close()
+                } catch (_: Throwable) {}
+                mlKitRecognizer = null
                 Log.d(TAG, "preload: OCR engine released by $reason")
             }
         }

@@ -154,7 +154,7 @@ class InspireContentView : MaterialCardView {
             if (event.actionMasked == MotionEvent.ACTION_DOWN &&
                 !imagePreviewController.isTouchInsideDisplayedImage(view as ImageView, event.x, event.y)
             ) {
-                return@setOnTouchListener true
+                return@setOnTouchListener false
             }
             false
         }
@@ -582,6 +582,74 @@ class InspireContentView : MaterialCardView {
         }
         rotationAnimator = animator
         animator.start()
+    }
+
+    private fun isPointInsideView(view: View?, rawX: Float, rawY: Float): Boolean {
+        if (view == null || !view.isShown) return false
+        val location = IntArray(2)
+        view.getLocationOnScreen(location)
+        val left = location[0]
+        val top = location[1]
+        val right = left + view.width
+        val bottom = top + view.height
+        return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
+    }
+
+    fun isTouchOnInteractiveContent(rawX: Float, rawY: Float): Boolean {
+        if (!isShown) return false
+
+        // 1. 操作按钮行
+        val actionButtons = listOfNotNull(
+            binding.scanQR,
+            binding.btnShare,
+            binding.btnPinImage,
+            binding.btnSaveImage,
+            binding.openUrl,
+            binding.btnReselect,
+            binding.btnModeOcr,
+            binding.btnModeAccessibility,
+            binding.selectAll,
+            binding.btnImageTextOverlay,
+        )
+        for (btn in actionButtons) {
+            if (isPointInsideView(btn, rawX, rawY)) {
+                return true
+            }
+        }
+
+        // 2. 悬浮操作栏（图片文字选择模式或分词模式）
+        if (isPointInsideView(binding.imageSelectionActionBarContainer, rawX, rawY)) {
+            return true
+        }
+        if (binding.bigBangLayout.isTouchOnFunctionView(rawX, rawY)) {
+            return true
+        }
+
+        // 3. 截屏预览区域
+        val previewContainer = binding.screenshotPreviewContainer
+        if (previewContainer != null && isPointInsideView(previewContainer, rawX, rawY)) {
+            if (displayMode.isImageTextSelection) {
+                return true
+            } else {
+                val imgView = binding.screenshotPreview
+                val location = IntArray(2)
+                imgView.getLocationOnScreen(location)
+                val localX = rawX - location[0]
+                val localY = rawY - location[1]
+                if (imagePreviewController.isTouchInsideDisplayedImage(imgView, localX, localY)) {
+                    return true
+                }
+            }
+        }
+
+        // 4. 分词词块
+        if (isPointInsideView(binding.bigBangLayoutNestedScroll, rawX, rawY)) {
+            if (binding.bigBangLayout.isTouchOnAnyItem(rawX, rawY)) {
+                return true
+            }
+        }
+
+        return false
     }
 
 }

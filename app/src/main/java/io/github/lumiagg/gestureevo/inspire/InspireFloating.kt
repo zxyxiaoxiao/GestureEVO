@@ -587,10 +587,22 @@ class InspireFloating(private val context: GestureService) :
                 resetTransitionState()
                 scheduleTransition(startUptimeMs)
 
+                val safeRect = Rect(
+                    minOf(dragSelectRect.left, dragSelectRect.right),
+                    minOf(dragSelectRect.top, dragSelectRect.bottom),
+                    maxOf(dragSelectRect.left, dragSelectRect.right),
+                    maxOf(dragSelectRect.top, dragSelectRect.bottom)
+                )
+
                 val accessibilityJob = async {
                     val words = mutableListOf<String>()
-                    for (copyNode in getScreenContent(context, dragSelectRect)) {
-                        copyNode.content?.let { words.add(it) }
+                    for (copyNode in getScreenContent(context, safeRect)) {
+                        val nodeBound = copyNode.bound
+                        // 过滤掉明显大于框选区域的父级全屏容器，确保只获取框选栏内的文字
+                        val isOverLargeParent = nodeBound.width() > safeRect.width() * 2 && nodeBound.height() > safeRect.height() * 2
+                        if (!isOverLargeParent) {
+                            copyNode.content?.let { if (it.isNotBlank()) words.add(it) }
+                        }
                     }
                     InspireDataHolder.accessibilityContent = words
                 }
@@ -598,7 +610,7 @@ class InspireFloating(private val context: GestureService) :
                 val takeScreenshotJob = async {
                     captureFreshScreenshot()?.use { screenshotHandle ->
                         val croppedBitmap =
-                            screenshotHandle.cropByRect(dragSelectRect) ?: return@async
+                            screenshotHandle.cropByRect(safeRect) ?: return@async
                         InspireDataHolder.replaceScreenshotBitmap(croppedBitmap)
                         PinPoolStore.addScreenContentImageIfEnabled(
                             context,
@@ -615,7 +627,7 @@ class InspireFloating(private val context: GestureService) :
                 InspireDataHolder.replaceOcrAllowedTextBoxes(null)
 
                 InspireDataHolder.dragRect = Rect()
-                InspireDataHolder.dragRect?.set(dragSelectRect)
+                InspireDataHolder.dragRect?.set(safeRect)
                 InspireDataHolder.forceImageTextSelection = sessionForceImageTextSelection
                 InspireDataHolder.triggerSide = sessionTriggerSide
 
@@ -750,8 +762,17 @@ class InspireFloating(private val context: GestureService) :
             sessionTriggerSide = side
             sessionForceImageTextSelection = forceImageTextSelection
             prepareVisibleInspireView()
-            inspireView.dragSelectRect.set(rect)
-            inspireView.inspireViewCallBack.onDragUp(rect)
+            val safeRect = Rect(
+                minOf(rect.left, rect.right),
+                minOf(rect.top, rect.bottom),
+                maxOf(rect.left, rect.right),
+                maxOf(rect.top, rect.bottom)
+            )
+            inspireView.dragSelectRect.set(safeRect)
+            // 直接以框选精准区域进行截图与内容提取，严格禁止resolveTargetRect重新放大为全屏
+            context.launch {
+                processScreenContent(safeRect)
+            }
         }
     }
 

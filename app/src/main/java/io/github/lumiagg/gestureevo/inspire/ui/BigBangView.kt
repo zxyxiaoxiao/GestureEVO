@@ -668,6 +668,25 @@ class BigBangView : ViewGroup, NestedScrollingChild {
         return builder.toString().replace("[\\n]+".toRegex(), "\n").trim { it <= ' ' }
     }
 
+    fun isTouchOnAnyItem(rawX: Float, rawY: Float): Boolean {
+        val location = IntArray(2)
+        getLocationOnScreen(location)
+        val localX = (rawX - location[0]).toInt()
+        val localY = (rawY - location[1]).toInt()
+        return findItemByPoint(localX, localY) != null
+    }
+
+    fun isTouchOnFunctionView(rawX: Float, rawY: Float): Boolean {
+        if (!::functionView.isInitialized || functionView.visibility != VISIBLE) return false
+        val location = IntArray(2)
+        functionView.getLocationOnScreen(location)
+        val left = location[0]
+        val top = location[1]
+        val right = left + functionView.width
+        val bottom = top + functionView.height
+        return rawX >= left && rawX <= right && rawY >= top && rawY <= bottom
+    }
+
     companion object {
         const val TAG: String = "BigBangLayout"
         const val ENTER: String = "_Enter_"

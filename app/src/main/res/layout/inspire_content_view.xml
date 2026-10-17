@@ -104,73 +104,137 @@
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/scanQR"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/baseline_qr_code_scanner_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/baseline_qr_code_scanner_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="扫码"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/btn_share"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/ic_baseline_share_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_baseline_share_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="分享"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/btn_pin_image"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/baseline_push_pin_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/baseline_push_pin_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="贴图"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/btn_save_image"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/baseline_save_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/baseline_save_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="保存"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </io.github.lumiagg.gestureevo.inspire.ui.InspireActionButtonsRow>
 
@@ -185,43 +249,75 @@
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/openUrl"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/ic_baseline_insert_link_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_baseline_insert_link_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="链接"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/btn_reselect"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/baseline_refresh_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/baseline_refresh_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="刷新"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="2"
                 app:cardElevation="0dp">
@@ -262,19 +358,35 @@
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.Material3.CardView.Filled"
                 android:layout_width="0dp"
-                android:layout_height="35dp"
+                android:layout_height="48dp"
                 android:layout_marginHorizontal="4dp"
                 android:layout_weight="1"
                 app:cardElevation="0dp">
 
-                <androidx.constraintlayout.utils.widget.ImageFilterView
+                <LinearLayout
                     android:id="@+id/selectAll"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:background="?attr/selectableItemBackground"
-                    android:padding="7dp"
-                    android:src="@drawable/baseline_select_all_24"
-                    android:tint="?attr/colorPrimary" />
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:paddingVertical="3dp">
+
+                    <androidx.constraintlayout.utils.widget.ImageFilterView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/baseline_select_all_24"
+                        android:tint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:includeFontPadding="false"
+                        android:text="全选"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="10sp" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 

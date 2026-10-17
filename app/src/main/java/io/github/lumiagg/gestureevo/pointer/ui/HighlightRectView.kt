@@ -18,7 +18,7 @@ import io.github.lumiagg.gestureevo.utils.dp2px
 
 class HighlightRectView(context: Context) : View(context) {
     private val strokePaint = Paint().apply {
-        color = DynamicColorUtils.primaryColor
+        color = Color.rgb(0xFF, 0xC1, 0x07) // 黄色虚线框
         style = Paint.Style.STROKE
         strokeWidth = 3f.dp2px
         val effects: PathEffect = DashPathEffect(floatArrayOf(10f, 20f), 0f)
@@ -27,22 +27,20 @@ class HighlightRectView(context: Context) : View(context) {
         strokeCap = Paint.Cap.ROUND
     }
     private val potentialStrokePaint = Paint().apply {
-        color = DynamicColorUtils.primaryColor
+        color = Color.rgb(0xFF, 0xC1, 0x07)
         style = Paint.Style.STROKE
-        strokeWidth = 2f.dp2px
+        strokeWidth = 2.5f.dp2px
         isAntiAlias = true
         strokeCap = Paint.Cap.ROUND
     }
     private val potentialFillPaint = Paint().apply {
-        color = DynamicColorUtils.primaryColor
+        color = Color.argb(32, 0xFF, 0xC1, 0x07)
         style = Paint.Style.FILL
-        alpha = 24
         isAntiAlias = true
     }
     private val fillPaint = Paint().apply {
-        color = DynamicColorUtils.primaryColor
+        color = Color.argb(40, 0xFF, 0xC1, 0x07)
         style = Paint.Style.FILL
-        alpha = 46
         isAntiAlias = true
     }
 
@@ -58,18 +56,16 @@ class HighlightRectView(context: Context) : View(context) {
     var isBackToOrigin = false
 
     fun setStrokeColor(color: Int) = post {
-        strokePaint.color = color
-        potentialStrokePaint.color = color
-        fillPaint.color = Color.argb(46, Color.red(color), Color.green(color), Color.blue(color))
-        potentialFillPaint.color = Color.argb(24, Color.red(color), Color.green(color), Color.blue(color))
+        strokePaint.color = Color.rgb(0xFF, 0xC1, 0x07)
+        fillPaint.color = Color.argb(40, 0xFF, 0xC1, 0x07)
         if (enable) invalidate()
     }
 
     // === CUSTOM EXTENSION START ===
     fun showPotentialRect(rect: Rect, isConfirmed: Boolean = false) = post {
         potentialRect = Rect(rect)
-        // 绿色为预选(#4CAF50)，停留两倍时间后变为黄色(#FFC107)为真实选中
-        val color = if (isConfirmed) Color.rgb(0xFF, 0xC1, 0x07) else Color.rgb(0x4C, 0xAF, 0x50)
+        // 黄色为预选(#FFC107)，确认后变为红色(#F44336)为真实选中
+        val color = if (isConfirmed) Color.rgb(0xF4, 0x43, 0x36) else Color.rgb(0xFF, 0xC1, 0x07)
         potentialStrokePaint.color = color
         potentialStrokePaint.strokeWidth = if (isConfirmed) 3f.dp2px else 2.5f.dp2px
         potentialFillPaint.color = Color.argb(if (isConfirmed) 48 else 32, Color.red(color), Color.green(color), Color.blue(color))

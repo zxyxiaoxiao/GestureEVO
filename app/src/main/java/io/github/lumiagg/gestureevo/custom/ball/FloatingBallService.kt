@@ -381,8 +381,8 @@ class FloatingBallService : Service() {
 
         val ballSize = config.getActualSizeDp().dp2px.toInt()
         params.x = (screenX - ballSize / 2f).toInt()
-        // 整体上移50%
-        params.y = (screenY - ballSize / 2f - ballSize * 0.5f).toInt()
+        // 整体上移50%并在现有位置基础上向下偏移20dp
+        params.y = (screenY - ballSize / 2f - ballSize * 0.5f + 20f.dp2px).toInt()
 
         isTemporarilyShowingForTrigger = true
         view.visibility = View.VISIBLE
@@ -405,8 +405,8 @@ class FloatingBallService : Service() {
 
         val ballSize = config.getActualSizeDp().dp2px.toInt()
         params.x = (screenX - ballSize / 2f).toInt()
-        // 整体上移50%
-        params.y = (screenY - ballSize / 2f - ballSize * 0.5f).toInt()
+        // 整体上移50%并在现有位置基础上向下偏移20dp
+        params.y = (screenY - ballSize / 2f - ballSize * 0.5f + 20f.dp2px).toInt()
 
         try {
             wm.updateViewLayout(view, params)

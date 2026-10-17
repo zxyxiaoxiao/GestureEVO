@@ -41,6 +41,9 @@ import io.github.lumiagg.gestureevo.utils.ToastHelper
 import io.github.lumiagg.gestureevo.utils.TransparentActivityLauncher
 import io.github.lumiagg.gestureevo.utils.readKey
 import io.github.lumiagg.gestureevo.utils.settingsStore
+import android.view.MotionEvent
+import android.view.ViewConfiguration
+import kotlin.math.hypot
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,6 +73,67 @@ class InspireContentActivity : AppCompatActivity() {
             contentView = inspireContentView,
             contentLoader = contentLoader,
         )
+    }
+
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var isTouchMoved = false
+    private val touchSlop by lazy { ViewConfiguration.get(this).scaledTouchSlop }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                touchDownX = ev.rawX
+                touchDownY = ev.rawY
+                isTouchMoved = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                if (hypot(ev.rawX - touchDownX, ev.rawY - touchDownY) > touchSlop) {
+                    isTouchMoved = true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (!isTouchMoved && !isFinishing) {
+                    if (!isTouchOnInteractiveContent(ev.rawX, ev.rawY)) {
+                        finish()
+                        return true
+                    }
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_UP && !isFinishing) {
+            finish()
+            return true
+        }
+        return super.onTouchEvent(event)
+    }
+
+    private fun isTouchOnInteractiveContent(rawX: Float, rawY: Float): Boolean {
+        // 1. 底部搜索引擎卡片
+        if (::bottomEngineCard.isInitialized && bottomEngineCard.isShown) {
+            val location = IntArray(2)
+            bottomEngineCard.getLocationOnScreen(location)
+            val left = location[0]
+            val top = location[1]
+            val right = left + bottomEngineCard.width
+            val bottom = top + bottomEngineCard.height
+            if (rawX >= left && rawX <= right && rawY >= top && rawY <= bottom) {
+                return true
+            }
+        }
+
+        // 2. 主内容卡片中的有效交互元素
+        if (::inspireContentView.isInitialized) {
+            if (inspireContentView.isTouchOnInteractiveContent(rawX, rawY)) {
+                return true
+            }
+        }
+
+        return false
     }
 
     private data class SelectedEditRange(

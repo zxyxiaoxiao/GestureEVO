@@ -10,86 +10,200 @@
     <androidx.appcompat.widget.LinearLayoutCompat
         android:id="@+id/functionLL"
         android:layout_width="wrap_content"
-        android:layout_height="match_parent"
-        android:orientation="horizontal">
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="2dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+        <LinearLayout
             android:id="@+id/edit"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/baseline_edit_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/baseline_edit_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="编辑"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/share"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/ic_baseline_share_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_baseline_share_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="分享"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/pin"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/baseline_push_pin_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/baseline_push_pin_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="贴图"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/transition"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/ic_baseline_g_translate_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_baseline_g_translate_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="翻译"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/copySelected"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/ic_baseline_content_copy_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_baseline_content_copy_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="复制"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/openUrl"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/ic_baseline_insert_link_24"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
-        <androidx.constraintlayout.utils.widget.ImageFilterView
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_baseline_insert_link_24"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="链接"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/sendToEVO"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:layout_margin="5dp"
-            android:foreground="?attr/selectableItemBackground"
-            android:padding="5dp"
-            android:src="@drawable/search_24px"
-            android:tint="?attr/colorPrimary"
-            app:round="100dp" />
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingVertical="3dp">
 
+            <androidx.constraintlayout.utils.widget.ImageFilterView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/search_24px"
+                android:tint="?attr/colorPrimary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:includeFontPadding="false"
+                android:text="搜索"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="9sp" />
+        </LinearLayout>
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 </androidx.cardview.widget.CardView>

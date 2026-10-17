@@ -10,6 +10,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.util.Log
@@ -411,6 +412,7 @@ class PointerFloating(
         private var isConfirmedSelection = false
         private var confirmSelectionJob: Job? = null
         private var initialTouchX = -1f
+        private var elementCapturedPoint: Point? = null
         // === CUSTOM EXTENSION END ===
         private val moveTouchHandler = MoveTouchHandler()
         val viewPositionMonitor = ViewPositionMonitor()
@@ -574,10 +576,13 @@ class PointerFloating(
                 trailView.clearTrail()
                 pointerIcon.apply {
                     setImageResource(R.drawable.baseline_add_24)
-                    applyPointerTheme(this)
+                    imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07)) // 黄色指针（预选）
                     background = null
+                    scaleX = 0.7f // +号缩小30%
+                    scaleY = 0.7f
                     setPadding(0, 0, 0, 0)
                 }
+                elementCapturedPoint = null
                 val halfPointerWidth = view.width / 2
                 val startPoint = Point(
                     view.x + halfPointerWidth,
@@ -601,12 +606,15 @@ class PointerFloating(
             confirmSelectionJob?.cancel()
             confirmSelectionJob = null
             isConfirmedSelection = false
+            elementCapturedPoint = null
             // === CUSTOM EXTENSION END ===
             context.gestureManager?.setInteractionMode(InteractionMode.NORMAL)
             context.postOnMain {
                 pointerIcon.apply {
                     setImageDrawable(null)
                     setBackgroundResource(R.drawable.pointer)
+                    scaleX = 1f
+                    scaleY = 1f
                     applyPointerTheme(this)
                     val padding = 10f.dp2px.toInt()
                     setPadding(padding, padding, padding, padding)
@@ -622,15 +630,25 @@ class PointerFloating(
             confirmSelectionJob?.cancel()
             isConfirmedSelection = false
             if (targetRect == null) {
+                elementCapturedPoint = null
                 highlightRectView.hidePotentialRect()
+                if (isDragMode && !hasStartedDragSelection) {
+                    pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
+                }
             } else {
-                // 实时框选可框选的目标后先显示为绿色（预选）
+                if (hasStartedDragSelection) {
+                    highlightRectView.hidePotentialRect()
+                    return
+                }
+                // 实时捕捉到屏幕元素：黄色指针与黄色预选栏（预选）
+                pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
                 highlightRectView.showPotentialRect(targetRect, isConfirmed = false)
-                // 停留两倍时间（500ms）后，选中栏变为黄色，这时为真实选中
+                // 停留500ms后，选中栏和指针从黄色修改为红色（为真实选中）
                 confirmSelectionJob = context.launch(Dispatchers.Main) {
                     delay(500)
                     if (isDragMode && !hasStartedDragSelection && potentialDragSelectRect == targetRect) {
                         isConfirmedSelection = true
+                        pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xF4, 0x43, 0x36))
                         highlightRectView.showPotentialRect(targetRect, isConfirmed = true)
                         VibratorUtils.vibrator(context, false)
                     }
@@ -785,8 +803,7 @@ class PointerFloating(
                     val pointerRadius = if (view.width > 0) view.width / 2f else 15f.dp2px
                     val minSafeY = if (screenStatusHeight > 0) screenStatusHeight.toFloat() else 0f
 
-                    val threshold20dp = 20f.dp2px
-                    val transitionSpan = 25f.dp2px
+                    val threshold40dp = 40f.dp2px
 
                     val isRightTrigger = if (triggerSide != null) {
                         triggerSide.equals(TriggerSide.RIGHT, ignoreCase = true)
@@ -797,24 +814,24 @@ class PointerFloating(
                     val dx = if (isRightTrigger) {
                         // 从屏幕右侧边缘触发
                         val distToRight = (screenWidth - touchViewX).coerceAtLeast(0f)
-                        if (distToRight <= threshold20dp) {
-                            // 手指还没离开屏幕右侧边缘20dp时：始终显示在靠屏幕一侧（右上角）
-                            dxPx
+                        if (distToRight >= threshold40dp) {
+                            // 手指在离屏幕边缘超过40dp：完全显示在内侧（左侧，-dxPx）
+                            -dxPx
                         } else {
-                            // 手指离开屏幕右侧边缘20dp后：从右上角平滑恢复跳转到左上角（根据手指移动实时调整，绝不闪现）
-                            val progress = ((distToRight - threshold20dp) / transitionSpan).coerceIn(0f, 1f)
+                            // 手指在离屏幕边缘40dp以内：指针实时跟随手指的移动速度逐渐平滑调整位置（0dp完全靠右侧，40dp完全过渡到左侧，绝不突变跳闪）
+                            val progress = (distToRight / threshold40dp).coerceIn(0f, 1f)
                             val smooth = progress * progress * (3f - 2f * progress)
                             dxPx * (1f - 2f * smooth)
                         }
                     } else {
                         // 从屏幕左侧边缘触发
                         val distToLeft = touchViewX.coerceAtLeast(0f)
-                        if (distToLeft <= threshold20dp) {
-                            // 手指还没离开屏幕左侧边缘20dp时：始终显示在靠屏幕一侧（左上角）
-                            -dxPx
+                        if (distToLeft >= threshold40dp) {
+                            // 手指在离屏幕边缘超过40dp：完全显示在内侧（右侧，+dxPx）
+                            dxPx
                         } else {
-                            // 手指离开屏幕左侧边缘20dp后：从左上角平滑恢复跳转到右上角
-                            val progress = ((distToLeft - threshold20dp) / transitionSpan).coerceIn(0f, 1f)
+                            // 手指在离屏幕边缘40dp以内：指针实时跟随手指的移动速度逐渐平滑调整位置（0dp完全靠左侧，40dp完全过渡到右侧，绝不突变跳闪）
+                            val progress = (distToLeft / threshold40dp).coerceIn(0f, 1f)
                             val smooth = progress * progress * (3f - 2f * progress)
                             dxPx * (-1f + 2f * smooth)
                         }
@@ -854,26 +871,39 @@ class PointerFloating(
 
                 if (isDragMode) {
                     val currentPoint = Point(targetPoint.x, targetPoint.y)
-                    val selectionRect = highlightRectView.currentSelectionRect(targetPoint)
-                    val isDragLarge = selectionRect.width() >= 35f.dp2px && selectionRect.height() >= 35f.dp2px
 
-                    if (isDragLarge && potentialDragSelectRect == null) {
-                        if (!hasStartedDragSelection) {
+                    if (hasStartedDragSelection) {
+                        // 已经处于黄色虚线框选截图功能中：实时更新虚线框选，实线黄色预选栏保持消失
+                        highlightRectView.updateRect(currentPoint)
+                    } else if (potentialDragSelectRect != null) {
+                        // 黄色指针捕捉到屏幕元素并显示黄色预选栏：这时拖动指针触发“虚线框选截图的功能”
+                        if (elementCapturedPoint == null) {
+                            elementCapturedPoint = Point(targetPoint.x, targetPoint.y)
+                        }
+                        val anchor = elementCapturedPoint ?: currentPoint
+                        val moveDist = Math.hypot((targetPoint.x - anchor.x).toDouble(), (targetPoint.y - anchor.y).toDouble()).toFloat()
+                        if (moveDist >= 15f.dp2px) {
                             hasStartedDragSelection = true
                             potentialDragSelectJob?.cancel()
                             potentialDragSelectJob = null
+                            potentialDragSelectRect = null
+                            potentialDragSelectSourceRect = null
                             pendingPotentialDragSelectRect = null
                             lastPotentialThinRect = null
                             confirmSelectionJob?.cancel()
                             isConfirmedSelection = false
+                            // 同时实线黄色预选栏消失，只显示“虚线框选截图的功能”
                             highlightRectView.hidePotentialRect()
+                            pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
+                            highlightRectView.showRect(anchor)
+                            highlightRectView.updateRect(currentPoint)
                         }
                     } else {
-                        // 依然可以实时移动指针而不会触发截图功能，持续探测当前目标
-                        hasStartedDragSelection = false
+                        // 预选时（黄色指针）依然可以实时移动指针游走探测目标
+                        elementCapturedPoint = Point(targetPoint.x, targetPoint.y)
                         loadPotentialDragSelectRect(targetPoint)
                     }
-                    highlightRectView.updateRect(currentPoint)
+
                     if (highlightRectView.isBackToOrigin) {
                         exitDragMode()
                     }
@@ -896,6 +926,9 @@ class PointerFloating(
                     val wasConfirmed = isConfirmedSelection
                     isConfirmedSelection = false
                     val targetConfirmedRect = potentialDragSelectRect
+                    val hadStartedDrag = hasStartedDragSelection
+                    hasStartedDragSelection = false
+                    elementCapturedPoint = null
                     // === CUSTOM EXTENSION END ===
                     view.visibility = View.INVISIBLE
                     val currentSelectionRect = highlightRectView.currentSelectionRect(computePosition())
@@ -905,16 +938,13 @@ class PointerFloating(
                     potentialDragSelectSourceRect = null
                     pendingPotentialDragSelectRect = null
                     highlightRectView.hidePotentialRect()
+                    highlightRectView.hideRect()
+
                     context.launch {
                         val effectiveSide = triggerSide
                             ?: (if (computePosition().x < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
-                        if (wasConfirmed && targetConfirmedRect != null) {
-                            // 只要在选中栏变为黄色（真实选中）后松开手指才会选择被框选的界面元素
-                            produceInspireEvent(
-                                InspireEvent(rect = targetConfirmedRect, side = effectiveSide)
-                            )
-                        } else if (hasStartedDragSelection && currentSelectionRect.width() >= 30f.dp2px && currentSelectionRect.height() >= 30f.dp2px) {
-                            // 拖动后可以截取屏幕
+                        if (hadStartedDrag && currentSelectionRect.width() >= 15f.dp2px && currentSelectionRect.height() >= 15f.dp2px) {
+                            // 触发“虚线框选截图的功能”后无须等待框选栏变为红色（为真实选中），松手后即刻只捕捉“虚线框选截图”内的元素和截图
                             val dragRect = Rect(
                                 min(currentSelectionRect.left, currentSelectionRect.right),
                                 min(currentSelectionRect.top, currentSelectionRect.bottom),
@@ -924,9 +954,14 @@ class PointerFloating(
                             produceInspireEvent(
                                 InspireEvent(rect = dragRect, side = effectiveSide)
                             )
+                        } else if (wasConfirmed && targetConfirmedRect != null) {
+                            // 真实选中状态松开手指：选择被框选的界面元素
+                            produceInspireEvent(
+                                InspireEvent(rect = targetConfirmedRect, side = effectiveSide)
+                            )
                         } else {
-                            // 绿色预选状态或未满足真实选中/拖动截图条件：不触发任何截图或选择操作，安全取消退出
-                            Log.d("PointerFloating", "Selection cancelled on UP (wasConfirmed=$wasConfirmed)")
+                            // 预选状态未变红且未拉出虚线框：安全退出不产生误操作
+                            Log.d("PointerFloating", "Selection cancelled on UP (wasConfirmed=$wasConfirmed, hadStartedDrag=$hadStartedDrag)")
                         }
                     }
                 } else if (pendingHoverLongPress) {
