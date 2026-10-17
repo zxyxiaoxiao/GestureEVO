@@ -144,8 +144,8 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             feedbackSwitch.isEnabled = true
 
             // === CUSTOM EXTENSION START ===
-            belowGestureBarSwitch.isChecked = trigger.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)
             followBallSwitch.isChecked = trigger.getState(FreeTriggerConfig.FLAG_FOLLOW_BALL)
+            triggerVibrateSwitch.isChecked = !trigger.getState(FreeTriggerConfig.FLAG_DISABLE_TRIGGER_VIBRATE)
             // === CUSTOM EXTENSION END ===
 
             xPositionSlider.value = trigger.xRelativeValue
@@ -258,6 +258,9 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             belowKeyboardSwitch.setOnCheckedChangeListener { _, _ -> triggerImmediateSave() }
             followTriggerPointSwitch.setOnCheckedChangeListener { _, _ -> triggerImmediateSave() }
             feedbackSwitch.setOnCheckedChangeListener { _, _ -> triggerImmediateSave() }
+            // === CUSTOM EXTENSION START ===
+            triggerVibrateSwitch.setOnCheckedChangeListener { _, _ -> triggerImmediateSave() }
+            // === CUSTOM EXTENSION END ===
 
             xPositionSlider.addOnChangeListener { _, _, fromUser ->
                 if (fromUser) triggerImmediateSave()
@@ -448,8 +451,8 @@ class FreeTriggerConfigActivity : AppCompatActivity() {
             )
             trigger.setState(FreeTriggerConfig.FLAG_FEEDBACK, feedbackSwitch.isChecked)
             // === CUSTOM EXTENSION START ===
-            trigger.setState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR, belowGestureBarSwitch.isChecked)
             trigger.setState(FreeTriggerConfig.FLAG_FOLLOW_BALL, followBallSwitch.isChecked)
+            trigger.setState(FreeTriggerConfig.FLAG_DISABLE_TRIGGER_VIBRATE, !triggerVibrateSwitch.isChecked)
             // === CUSTOM EXTENSION END ===
             trigger.setQuadrant(pieConfigQuadrant.getQuadrantClickedList())
         }

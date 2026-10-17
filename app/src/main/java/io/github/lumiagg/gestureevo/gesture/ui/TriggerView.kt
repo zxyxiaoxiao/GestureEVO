@@ -158,7 +158,11 @@ class TriggerView @JvmOverloads constructor(
         var awaitingDoubleTap: Boolean = false,
         var lastTapUpTime: Long = 0L,
         var lastTapUpX: Float = 0f,
-        var lastTapUpY: Float = 0f
+        var lastTapUpY: Float = 0f,
+        // === CUSTOM EXTENSION START ===
+        var hasExceededEdge40dp: Boolean = false,
+        var hasFoldedBackToEdge40dp: Boolean = false
+        // === CUSTOM EXTENSION END ===
     )
 
     inner class OptimizedGestureListener : OnTouchListener {
@@ -435,6 +439,10 @@ class TriggerView @JvmOverloads constructor(
                 initialDySign = 0
                 hasExceededSwipeThreshold = shouldSuppressTap
                 hasRearmedSwipe = false
+                // === CUSTOM EXTENSION START ===
+                hasExceededEdge40dp = false
+                hasFoldedBackToEdge40dp = false
+                // === CUSTOM EXTENSION END ===
                 if (clearDoubleTapState) {
                     awaitingDoubleTap = false
                     lastTapUpTime = 0L
@@ -463,6 +471,52 @@ class TriggerView @JvmOverloads constructor(
             val dy = event.y - gestureState.lastTapUpY
             return sqrt(dx * dx + dy * dy) <= doubleTapSlop
         }
+
+        // === CUSTOM EXTENSION START ===
+        private val edge40dpPx = 40f.dp2px
+
+        private fun checkEdge40dpReversal(currentX: Float, currentY: Float, event: MotionEvent): Boolean {
+            val isLeftOrRightSwipe = gestureState.currentGestureType == GestureType.SWIPE_LEFT ||
+                    gestureState.currentGestureType == GestureType.SWIPE_RIGHT
+            if (!gestureState.hasSwipeTriggered || !isLeftOrRightSwipe) {
+                return false
+            }
+
+            getLocationOnScreen(tempLocation)
+            val rawX = tempLocation[0] + currentX
+            val screenW = resources.displayMetrics.widthPixels
+            val isLeftEdge = (tempLocation[0] + width / 2) < (screenW / 2)
+            val distanceFromEdge = if (isLeftEdge) rawX else (screenW - rawX)
+
+            if (distanceFromEdge > edge40dpPx) {
+                gestureState.hasExceededEdge40dp = true
+            } else if (gestureState.hasExceededEdge40dp) {
+                gestureState.hasFoldedBackToEdge40dp = true
+                val backEvent = GestureTypeEvent(
+                    gestureState.currentGestureType,
+                    GesturePhase.BACK
+                )
+                triggerCallBack.onGesture(
+                    this@TriggerView,
+                    backEvent,
+                    gestureState.currentGestureType,
+                    event
+                )
+                gestureState.hasSwipeTriggered = false
+                gestureState.currentGestureType = GestureType.TOUCH
+                gestureState.startX = currentX
+                gestureState.startY = currentY
+                gestureState.initialDxSign = 0
+                gestureState.initialDySign = 0
+                gestureState.hasExceededSwipeThreshold = false
+                gestureState.hasExceededEdge40dp = false
+                gestureHandler.removeCallbacks(pauseRunnable)
+                pauseScheduled = false
+                return true
+            }
+            return false
+        }
+        // === CUSTOM EXTENSION END ===
 
         private fun resetForNewGesture(currentX: Float, currentY: Float): Boolean {
             if (!gestureState.hasBackTriggered) {
@@ -618,6 +672,12 @@ class TriggerView @JvmOverloads constructor(
                         gestureState.initialDxSign = deltaX.compareTo(0f)
                         gestureState.initialDySign = deltaY.compareTo(0f)
                     }
+
+                    // === CUSTOM EXTENSION START ===
+                    if (checkEdge40dpReversal(currentX, currentY, event)) {
+                        return true
+                    }
+                    // === CUSTOM EXTENSION END ===
 
                     // Detect back gesture
                     if (detectBackGesture(currentX, currentY)) {
@@ -797,9 +857,7 @@ class TriggerView @JvmOverloads constructor(
     fun updateSystemGestureExclusion() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // === CUSTOM EXTENSION START ===
-            if (triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR) ||
-                triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)
-            ) {
+            if (triggerConfig.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)) {
                 systemGestureExclusionRects = emptyList()
                 return
             }

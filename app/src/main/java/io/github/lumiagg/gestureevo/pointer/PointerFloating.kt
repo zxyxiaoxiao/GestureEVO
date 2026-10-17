@@ -429,6 +429,18 @@ class PointerFloating(
             layoutParams.endToEnd = LayoutParams.PARENT_ID
 
             pointerFloatingView.addView(view, layoutParams)
+            applyYellowPlusStyle()
+        }
+
+        private fun applyYellowPlusStyle() {
+            pointerIcon.apply {
+                setImageResource(R.drawable.baseline_add_24)
+                imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
+                background = null
+                scaleX = 0.7f
+                scaleY = 0.7f
+                setPadding(0, 0, 0, 0)
+            }
         }
 
         fun initPosition() {
@@ -436,21 +448,23 @@ class PointerFloating(
             view.x = -100f
             view.y = -100f
             view.alpha = 1f
-            view.scaleX = 1f
-            view.scaleY = 1f
+            view.scaleX = 0.7f
+            view.scaleY = 0.7f
+            applyYellowPlusStyle()
             trailView.clearTrail()
         }
 
         fun showPointer() {
             view.animate().cancel()
             view.alpha = 0f
-            view.scaleX = POINTER_ANIMATION_START_SCALE
-            view.scaleY = POINTER_ANIMATION_START_SCALE
+            view.scaleX = POINTER_ANIMATION_START_SCALE * 0.7f
+            view.scaleY = POINTER_ANIMATION_START_SCALE * 0.7f
             view.visibility = View.VISIBLE
+            applyYellowPlusStyle()
             view.animate()
                 .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
+                .scaleX(0.7f)
+                .scaleY(0.7f)
                 .setDuration(POINTER_SHOW_ANIMATION_DURATION)
                 .start()
         }
@@ -463,14 +477,14 @@ class PointerFloating(
             }
             view.animate()
                 .alpha(0f)
-                .scaleX(POINTER_ANIMATION_START_SCALE)
-                .scaleY(POINTER_ANIMATION_START_SCALE)
+                .scaleX(POINTER_ANIMATION_START_SCALE * 0.7f)
+                .scaleY(POINTER_ANIMATION_START_SCALE * 0.7f)
                 .setDuration(POINTER_HIDE_ANIMATION_DURATION)
                 .withEndAction {
                     view.visibility = View.INVISIBLE
                     view.alpha = 1f
-                    view.scaleX = 1f
-                    view.scaleY = 1f
+                    view.scaleX = 0.7f
+                    view.scaleY = 0.7f
                     onEnd()
                 }
                 .start()
@@ -571,6 +585,9 @@ class PointerFloating(
                 }
             }
             VibratorUtils.vibrator(context, true)
+            // === CUSTOM EXTENSION START ===
+            io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.onPointerActivated(context)
+            // === CUSTOM EXTENSION END ===
             context.postOnMain {
                 trailView.enable = false
                 trailView.clearTrail()
@@ -607,18 +624,11 @@ class PointerFloating(
             confirmSelectionJob = null
             isConfirmedSelection = false
             elementCapturedPoint = null
+            io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.onPointerDeactivated()
             // === CUSTOM EXTENSION END ===
             context.gestureManager?.setInteractionMode(InteractionMode.NORMAL)
             context.postOnMain {
-                pointerIcon.apply {
-                    setImageDrawable(null)
-                    setBackgroundResource(R.drawable.pointer)
-                    scaleX = 1f
-                    scaleY = 1f
-                    applyPointerTheme(this)
-                    val padding = 10f.dp2px.toInt()
-                    setPadding(padding, padding, padding, padding)
-                }
+                applyYellowPlusStyle()
                 trailView.updateTrailConfig()
                 highlightRectView.hideRect()
                 highlightRectView.hidePotentialRect()
@@ -670,10 +680,13 @@ class PointerFloating(
             potentialDragSelectJob?.cancel()
             potentialDragSelectSourceRect = Rect(sourceRect)
             potentialDragSelectJob = context.launch(Dispatchers.Default) {
-                val targetRect = getScreenView(context, pointRect, clickMode = true)
+                // === CUSTOM EXTENSION START ===
+                val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.hitTest(centerX, centerY)
+                val targetRect = cachedHit ?: getScreenView(context, pointRect, clickMode = true)
                     .filter { it.area > 0 }
                     .minByOrNull { it.area }
                     ?.bound
+                // === CUSTOM EXTENSION END ===
                 if (potentialDragSelectSourceRect != sourceRect) return@launch
                 withContext(Dispatchers.Main) {
                     if (!isDragMode || hasStartedDragSelection) return@withContext
@@ -716,10 +729,15 @@ class PointerFloating(
             val tooSmallWidth = selectionRect.width() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
             val tooSmallHeight = selectionRect.height() < io.github.lumiagg.gestureevo.inspire.ui.InspireView.DRAG_SELECT_CLICK_THRESHOLD
             return when {
-                tooSmallWidth && tooSmallHeight -> getScreenView(context, selectionRect, clickMode = true)
-                    .filter { it.area > 0 }
-                    .minByOrNull { it.area }
-                    ?.bound
+                tooSmallWidth && tooSmallHeight -> {
+                    // === CUSTOM EXTENSION START ===
+                    val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.hitTest(selectionRect)
+                    cachedHit ?: getScreenView(context, selectionRect, clickMode = true)
+                        .filter { it.area > 0 }
+                        .minByOrNull { it.area }
+                        ?.bound
+                    // === CUSTOM EXTENSION END ===
+                }
 
                 tooSmallWidth || tooSmallHeight -> {
                     val views = getScreenView(context, selectionRect, clickMode = false)
@@ -1235,6 +1253,15 @@ class PointerFloating(
         y: Float,
         duration: Long = 100L
     ): Boolean {
+        // === CUSTOM EXTENSION START ===
+        val simulateClick = context.settingsStore.readKey(
+            io.github.lumiagg.gestureevo.settings.InspireSettingsActivity.KEY_POINTER_SIMULATE_CLICK,
+            true
+        )
+        if (!simulateClick) {
+            return false
+        }
+        // === CUSTOM EXTENSION END ===
         context.setActionViewTouchEnabled(false)
         delay(50)
         return try {

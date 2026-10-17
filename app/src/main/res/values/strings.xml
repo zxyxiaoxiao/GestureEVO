@@ -643,8 +643,8 @@
     <string name="free_trigger_set_time">设置阈值</string>
     <string name="free_trigger_mirror_title">镜像设置</string>
     <string name="free_trigger_mirror_desc">启用后将在屏幕对称位置创建相同的触发区域</string>
-    <string name="free_trigger_keyboard_layer_title">键盘层级</string>
-    <string name="free_trigger_keyboard_layer_desc">关闭时触发区显示在键盘上方；开启后输入法弹出时会位于键盘下方；部分系统可能不会生效</string>
+    <string name="free_trigger_keyboard_layer_title">低于系统手势栏和键盘层级</string>
+    <string name="free_trigger_keyboard_layer_desc">开启后输入法弹出时位于键盘下方，且触发区低于系统手势栏（系统全面屏手势优先）</string>
     <string name="free_trigger_follow_touch_title">轮盘触发点设置</string>
     <string name="free_trigger_follow_touch_desc">启用后，该触发器触发的轮盘将以真实触发点为初始位置，而不是触发器中心</string>
     <string name="free_trigger_feedback_title">手势提示</string>

@@ -79,6 +79,9 @@
                     <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="区域固定" app:settingsRowSummary="指针位置始终保持在以手指按压区域到指针显示处直径为21.5dp的位置显示">
                         <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerFixedAreaSwitch" android:checked="false" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
+                    <io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" app:settingsRowTitle="模拟点击" app:settingsRowSummary="关闭后指针将不会点击屏幕，开启则保留该功能">
+                        <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/pointerSimulateClickSwitch" android:checked="true" android:layout_width="wrap_content" android:layout_height="wrap_content" />
+                    </io.github.lumiagg.gestureevo.settings.ui.SettingsSwitchRow>
                     <!-- === CUSTOM EXTENSION END === -->
                 </LinearLayout>
             </io.github.lumiagg.gestureevo.settings.ui.SettingsSectionCard>

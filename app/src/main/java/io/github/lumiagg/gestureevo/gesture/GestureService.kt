@@ -56,6 +56,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         gestureManager?.onWindowStateChanged(event)
         // === CUSTOM EXTENSION START ===
         event.packageName?.let { io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.onForegroundPackageChanged(this, it.toString()) }
+        io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.onAccessibilityEvent(this, event)
         // === CUSTOM EXTENSION END ===
     }
 

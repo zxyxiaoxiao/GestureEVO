@@ -8,9 +8,18 @@ import android.os.Vibrator
 
 object VibratorUtils {
     var vibrator: Vibrator? = null
+    // === CUSTOM EXTENSION START ===
+    @Volatile
+    var isCurrentTriggerVibrateDisabled: Boolean = false
+    // === CUSTOM EXTENSION END ===
 
     @SuppressLint("MissingPermission")
     fun vibrator(context: Context, isDouble: Boolean) {
+        // === CUSTOM EXTENSION START ===
+        if (isCurrentTriggerVibrateDisabled) {
+            return
+        }
+        // === CUSTOM EXTENSION END ===
         if (vibrator == null) {
             vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }

@@ -66,6 +66,7 @@ class InspireSettingsActivity : AppCompatActivity() {
         const val KEY_ENABLE_POINTER_DRAG_MODE = "key_enable_pointer_drag_mode"
         // === CUSTOM EXTENSION START ===
         const val KEY_POINTER_FIXED_AREA = "key_pointer_fixed_area"
+        const val KEY_POINTER_SIMULATE_CLICK = "key_pointer_simulate_click"
         // === CUSTOM EXTENSION END ===
         const val KEY_PIN_POOL_DISPLAY_MODE = "key_pin_pool_display_mode"
         const val KEY_PIN_POOL_LOCAL_RULE_EXTRACTION = "key_pin_pool_local_rule_extraction"
@@ -159,6 +160,8 @@ class InspireSettingsActivity : AppCompatActivity() {
         // === CUSTOM EXTENSION START ===
         binding.pointerFixedAreaSwitch.isChecked =
             settingsStore.readKey(KEY_POINTER_FIXED_AREA, false)
+        binding.pointerSimulateClickSwitch.isChecked =
+            settingsStore.readKey(KEY_POINTER_SIMULATE_CLICK, true)
         // === CUSTOM EXTENSION END ===
 
         val pinPoolDisplayMode =
@@ -412,6 +415,11 @@ class InspireSettingsActivity : AppCompatActivity() {
         binding.pointerFixedAreaSwitch.setOnCheckedChangeListener { _, isChecked ->
             lifecycleScope.launch {
                 settingsStore.saveKey(KEY_POINTER_FIXED_AREA, isChecked)
+            }
+        }
+        binding.pointerSimulateClickSwitch.setOnCheckedChangeListener { _, isChecked ->
+            lifecycleScope.launch {
+                settingsStore.saveKey(KEY_POINTER_SIMULATE_CLICK, isChecked)
             }
         }
         // === CUSTOM EXTENSION END ===

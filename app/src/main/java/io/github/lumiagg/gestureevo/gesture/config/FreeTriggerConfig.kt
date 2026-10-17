@@ -105,8 +105,9 @@ class FreeTriggerConfig {
         const val FLAG_BELOW_KEYBOARD: Int = 1.shl(10)
 
         // === CUSTOM EXTENSION START ===
-        const val FLAG_BELOW_GESTURE_BAR: Int = 1.shl(11) // 低于系统手势栏层级
+        const val FLAG_BELOW_GESTURE_BAR: Int = 1.shl(11) // 兼容保留
         const val FLAG_FOLLOW_BALL: Int = 1.shl(12) // 悬浮球跟随
+        const val FLAG_DISABLE_TRIGGER_VIBRATE: Int = 1.shl(13) // 触发振动禁用标志（未设置则为开启）
         // === CUSTOM EXTENSION END ===
 
 

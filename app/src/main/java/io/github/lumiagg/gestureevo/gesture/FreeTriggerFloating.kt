@@ -247,8 +247,7 @@ class FreeTriggerFloating(
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 
             val belowKeyboard = config.getState(FreeTriggerConfig.FLAG_BELOW_KEYBOARD)
-            val belowGestureBar = config.getState(FreeTriggerConfig.FLAG_BELOW_GESTURE_BAR)
-            if (belowKeyboard || belowGestureBar) {
+            if (belowKeyboard) {
                 windowFlags = windowFlags or WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM
                 // === CUSTOM EXTENSION START ===
                 windowFlags = windowFlags and WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS.inv()

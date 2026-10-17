@@ -489,6 +489,10 @@ class GestureManager(
                 if (event.action == MotionEvent.ACTION_DOWN) {
                     actionExecuted = false
                 }
+                // === CUSTOM EXTENSION START ===
+                VibratorUtils.isCurrentTriggerVibrateDisabled =
+                    triggerView.triggerConfig.getState(FreeTriggerConfig.FLAG_DISABLE_TRIGGER_VIBRATE)
+                // === CUSTOM EXTENSION END ===
                 if (!isTriggerActionAllowed()) {
                     forwardPointerTouchIfNeeded(gestureTypeEvent, event)
                     return
