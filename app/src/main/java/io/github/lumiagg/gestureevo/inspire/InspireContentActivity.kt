@@ -397,6 +397,12 @@ class InspireContentActivity : AppCompatActivity() {
 
     private suspend fun processOCRData(loadPlan: InspireContentLoadPlan) {
         if (!loadPlan.hasScreenshot) return
+        val isOcrPriority = settingsStore.readKey(InspireSettingsActivity.KEY_OCR_PRIORITY, true)
+        val isCapturedFromNode = InspireDataHolder.isCapturedFromNodeBounds
+        // 关闭“优先使用OCR识别”开关后，所有识别并捕捉到布局边界、剪辑边界、边距等它们里面的内容，都只允许使用无障碍获取
+        if (!isOcrPriority && isCapturedFromNode) {
+            return
+        }
         val ocrResult = withContext(Dispatchers.Default) {
             screenshotBitmapHandle?.bitmapOrNull?.let { originalBitmap ->
                 contentLoader.buildOcrResult(

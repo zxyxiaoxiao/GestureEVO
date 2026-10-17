@@ -22,6 +22,8 @@ object InspireDataHolder {
 
     var forceImageTextSelection: Boolean = false
     var triggerSide: String? = null
+    // 标识本次捕获是否来自于布局边界、剪辑边界、边距等无障碍节点元素
+    var isCapturedFromNodeBounds: Boolean = false
 
     fun replaceScreenshotBitmap(bitmapHandle: ManagedBitmap?) {
         val newHandle = bitmapHandle?.acquire()
@@ -46,5 +48,6 @@ object InspireDataHolder {
         ocrAllowedTextBoxes = null
         forceImageTextSelection = false
         triggerSide = null
+        isCapturedFromNodeBounds = false
     }
 }

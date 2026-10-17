@@ -121,6 +121,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
 
     override fun onCreate() {
         super.onCreate()
+        // === CUSTOM EXTENSION START ===
+        instance = this
+        // === CUSTOM EXTENSION END ===
         job = Job()
 
         setTheme(com.google.android.material.R.style.Theme_Material3_DayNight)
@@ -144,6 +147,7 @@ class GestureService : AccessibilityService(), CoroutineScope {
         io.github.lumiagg.gestureevo.pin.PinDragCancelOverlay.hide(notify = false)
         // === CUSTOM EXTENSION START ===
         io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.destroy()
+        if (instance === this) instance = null
         // === CUSTOM EXTENSION END ===
         job.cancel()
     }
@@ -390,6 +394,9 @@ class GestureService : AccessibilityService(), CoroutineScope {
 
     companion object {
         private const val TAG = "GestureService"
-
+        // === CUSTOM EXTENSION START ===
+        var instance: GestureService? = null
+            private set
+        // === CUSTOM EXTENSION END ===
     }
 }

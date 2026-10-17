@@ -131,7 +131,10 @@ class InspireFloating(private val context: GestureService) :
                     return
                 }
                 taskJob = context.launch {
-                    val targetRect = resolveTargetRect(dragSelectRect) ?: dragSelectRect
+                    val resolved = resolveTargetRect(dragSelectRect)
+                    val isFromNode = resolved != null && resolved != dragSelectRect
+                    InspireDataHolder.isCapturedFromNodeBounds = isFromNode
+                    val targetRect = resolved ?: dragSelectRect
                     processScreenContent(targetRect)
                 }
             }

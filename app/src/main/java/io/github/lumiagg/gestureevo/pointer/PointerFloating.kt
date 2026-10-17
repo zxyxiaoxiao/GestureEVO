@@ -554,10 +554,7 @@ class PointerFloating(
 
         suspend fun showViewCenter(boolean: Boolean) = withContext(Dispatchers.Main) {
             if (boolean) {
-                pointerIcon.apply {
-                    setImageResource(R.drawable.baseline_circle_24)
-                    applyPointerTheme(this)
-                }
+                applyYellowPlusStyle()
             } else {
                 pointerIcon.setImageDrawable(null)
             }
@@ -653,9 +650,9 @@ class PointerFloating(
                 // 实时捕捉到屏幕元素：黄色指针与黄色预选栏（预选）
                 pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xFF, 0xC1, 0x07))
                 highlightRectView.showPotentialRect(targetRect, isConfirmed = false)
-                // 停留500ms后，选中栏和指针从黄色修改为红色（为真实选中）
+                // 停留350ms后（过渡时间提升30%），选中栏和指针从黄色修改为红色（为真实选中）
                 confirmSelectionJob = context.launch(Dispatchers.Main) {
-                    delay(500)
+                    delay(350)
                     if (isDragMode && !hasStartedDragSelection && potentialDragSelectRect == targetRect) {
                         isConfirmedSelection = true
                         pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xF4, 0x43, 0x36))
@@ -670,6 +667,19 @@ class PointerFloating(
         private fun loadPotentialDragSelectRect(point: Point) {
             val centerX = point.x.toInt()
             val centerY = point.y.toInt()
+
+            // 预选加速：优先利用预构建纯内存无锁快照进行微秒级命中，避免多余 IPC
+            val fastHit = io.github.lumiagg.gestureevo.custom.pointer.NodeCacheManager.hitTestRect(centerX, centerY)
+            if (fastHit != null) {
+                potentialDragSelectJob?.cancel()
+                potentialDragSelectSourceRect = Rect(centerX, centerY, centerX, centerY)
+                if (potentialDragSelectRect != fastHit) {
+                    potentialDragSelectRect = fastHit
+                    applyPotentialTargetRect(fastHit)
+                }
+                return
+            }
+
             val pointRect = Rect(
                 centerX - 8,
                 centerY - 8,
@@ -681,7 +691,7 @@ class PointerFloating(
             potentialDragSelectSourceRect = Rect(sourceRect)
             potentialDragSelectJob = context.launch(Dispatchers.Default) {
                 // === CUSTOM EXTENSION START ===
-                val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.hitTest(centerX, centerY)
+                val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.NodeCacheManager.hitTestRect(centerX, centerY)
                 val targetRect = cachedHit ?: getScreenView(context, pointRect, clickMode = true)
                     .filter { it.area > 0 }
                     .minByOrNull { it.area }
@@ -731,7 +741,7 @@ class PointerFloating(
             return when {
                 tooSmallWidth && tooSmallHeight -> {
                     // === CUSTOM EXTENSION START ===
-                    val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.AccessibilityNodeCacheManager.hitTest(selectionRect)
+                    val cachedHit = io.github.lumiagg.gestureevo.custom.pointer.NodeCacheManager.hitTestRect(selectionRect)
                     cachedHit ?: getScreenView(context, selectionRect, clickMode = true)
                         .filter { it.area > 0 }
                         .minByOrNull { it.area }
@@ -963,6 +973,7 @@ class PointerFloating(
                             ?: (if (computePosition().x < context.resources.displayMetrics.widthPixels / 2f) TriggerSide.LEFT else TriggerSide.RIGHT)
                         if (hadStartedDrag && currentSelectionRect.width() >= 15f.dp2px && currentSelectionRect.height() >= 15f.dp2px) {
                             // 触发“虚线框选截图的功能”后无须等待框选栏变为红色（为真实选中），松手后即刻只捕捉“虚线框选截图”内的元素和截图
+                            io.github.lumiagg.gestureevo.inspire.InspireDataHolder.isCapturedFromNodeBounds = false
                             val dragRect = Rect(
                                 min(currentSelectionRect.left, currentSelectionRect.right),
                                 min(currentSelectionRect.top, currentSelectionRect.bottom),
@@ -973,7 +984,8 @@ class PointerFloating(
                                 InspireEvent(rect = dragRect, side = effectiveSide)
                             )
                         } else if (wasConfirmed && targetConfirmedRect != null) {
-                            // 真实选中状态松开手指：选择被框选的界面元素
+                            // 真实选中状态松开手指：选择被框选的界面元素（布局边界、剪辑边界、边距）
+                            io.github.lumiagg.gestureevo.inspire.InspireDataHolder.isCapturedFromNodeBounds = true
                             produceInspireEvent(
                                 InspireEvent(rect = targetConfirmedRect, side = effectiveSide)
                             )

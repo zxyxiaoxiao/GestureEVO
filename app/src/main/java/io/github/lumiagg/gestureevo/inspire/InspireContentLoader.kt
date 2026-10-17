@@ -17,7 +17,9 @@ internal class InspireContentLoader(private val context: Context) {
         val hasScreenshot = screenshotBitmapHandle?.bitmapOrNull != null
         val accessibilityContent = InspireDataHolder.accessibilityContent
         val hasAccessibilityContent = accessibilityContent?.any { it.trim().isNotEmpty() } == true
-        val initialDisplayMode = if (defaultImageTextOverlay && hasScreenshot) {
+        val isOcrPriority = context.settingsStore.readKey(InspireSettingsActivity.KEY_OCR_PRIORITY, true)
+        val isCapturedFromNode = InspireDataHolder.isCapturedFromNodeBounds
+        val initialDisplayMode = if (defaultImageTextOverlay && hasScreenshot && (isOcrPriority || !isCapturedFromNode)) {
             InspireDisplayMode.IMAGE_TEXT_SELECTION
         } else {
             InspireDisplayMode.TOKEN_SELECTION
@@ -25,6 +27,8 @@ internal class InspireContentLoader(private val context: Context) {
         val initialTokenMode = selectInitialTokenMode(
             hasScreenshot = hasScreenshot,
             hasAccessibilityContent = hasAccessibilityContent,
+            isOcrPriority = isOcrPriority,
+            isCapturedFromNode = isCapturedFromNode,
         )
         return InspireContentLoadPlan(
             initialDisplayMode = initialDisplayMode,
@@ -57,13 +61,21 @@ internal class InspireContentLoader(private val context: Context) {
         }
     }
 
-    private suspend fun selectInitialTokenMode(
+    private fun selectInitialTokenMode(
         hasScreenshot: Boolean,
         hasAccessibilityContent: Boolean,
+        isOcrPriority: Boolean,
+        isCapturedFromNode: Boolean,
     ): InspireTokenContentMode {
-        val isOcrPriority = context.settingsStore.readKey(InspireSettingsActivity.KEY_OCR_PRIORITY, true)
         return when {
-            hasScreenshot && (isOcrPriority || !hasAccessibilityContent) -> InspireTokenContentMode.OCR
+            // 关闭“优先使用OCR识别”开关后，所有识别并捕捉到布局边界、剪辑边界、边距等它们里面的内容，都只允许使用无障碍获取
+            !isOcrPriority && isCapturedFromNode -> {
+                InspireTokenContentMode.ACCESSIBILITY
+            }
+            // 只有在捕捉非布局边界、剪辑边界、边距屏幕元素时（比如虚线截屏），或者开启了OCR优先时，才使用OCR识别
+            hasScreenshot && (isOcrPriority || !isCapturedFromNode || !hasAccessibilityContent) -> {
+                InspireTokenContentMode.OCR
+            }
             hasAccessibilityContent -> InspireTokenContentMode.ACCESSIBILITY
             else -> InspireTokenContentMode.ACCESSIBILITY
         }
