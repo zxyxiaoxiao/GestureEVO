@@ -526,6 +526,8 @@ class PointerFloating(
                         moveTouchHandler.handleActionUp(event)
                     }
                     // === CUSTOM EXTENSION START ===
+                    viewPositionMonitor.stop()
+                    exitDragMode()
                     initialTouchX = -1f
                     if (followBallEnabled) {
                         io.github.lumiagg.gestureevo.custom.ball.FloatingBallManager.resetAndHideFollowBall(context)
@@ -656,7 +658,10 @@ class PointerFloating(
                 // 停留350ms后（过渡时间提升30%），选中栏和指针从黄色修改为红色（为真实选中）
                 confirmSelectionJob = context.launch(Dispatchers.Main) {
                     delay(350)
-                    if (isDragMode && !hasStartedDragSelection && potentialDragSelectRect == targetRect) {
+                    if (isDragMode && enable && pointerVisibleRequested &&
+                        pointerFloatingView.visibility == View.VISIBLE &&
+                        !hasStartedDragSelection && potentialDragSelectRect == targetRect
+                    ) {
                         isConfirmedSelection = true
                         pointerIcon.imageTintList = ColorStateList.valueOf(Color.rgb(0xF4, 0x43, 0x36))
                         highlightRectView.showPotentialRect(targetRect, isConfirmed = true)
@@ -956,6 +961,7 @@ class PointerFloating(
                             Log.d("PointerFloating", "Selection cancelled on UP (wasConfirmed=$wasConfirmed, hadStartedDrag=$hadStartedDrag)")
                         }
                     }
+                    exitDragMode()
                 } else if (pendingHoverLongPress) {
                     val targetPoint = pendingHoverPoint ?: computePosition()
                     pendingHoverLongPress = false

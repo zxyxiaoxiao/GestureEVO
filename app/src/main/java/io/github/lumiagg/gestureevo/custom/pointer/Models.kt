@@ -17,7 +17,10 @@ data class CachedNode(
     val area: Long,
     val isVisible: Boolean,
     val isEditable: Boolean,
-    val cachedText: String?
+    val cachedText: String?,
+    val windowLayer: Int = 0, // 窗口 Z-order 层级（越大越在顶层）
+    val zOrder: Int = 0, // 同窗口内绘制次序（越大越在上层）
+    val semanticBounds: Rect = boundsInScreen // 提升后的语义完整控件边界（确保输入框/整条消息全量框选与截图）
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

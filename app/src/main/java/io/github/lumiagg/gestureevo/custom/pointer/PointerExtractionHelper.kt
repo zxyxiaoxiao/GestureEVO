@@ -150,6 +150,14 @@ object PointerExtractionHelper {
                     Log.d(TAG, "extractFullTextForNodeBounds read direct text: ${nodeText.take(50)}")
                     return listOf(nodeText)
                 }
+                // 若自身无直接文本但属于复合控件，聚合子树完整文本
+                val aggregateBuilder = StringBuilder()
+                collectAllChildText(realNode, aggregateBuilder)
+                val aggregated = aggregateBuilder.toString().trim()
+                if (aggregated.isNotBlank()) {
+                    Log.d(TAG, "extractFullTextForNodeBounds read aggregated text: ${aggregated.take(50)}")
+                    return listOf(aggregated)
+                }
                 null
             } finally {
                 runCatching {
@@ -193,6 +201,19 @@ object PointerExtractionHelper {
             }
         }
         return bestMatch
+    }
+
+    private fun collectAllChildText(node: AccessibilityNodeInfo, builder: StringBuilder) {
+        val childCount = node.childCount
+        for (i in 0 until childCount) {
+            val child = runCatching { node.getChild(i) }.getOrNull() ?: continue
+            val txt = child.text?.toString()
+            if (!txt.isNullOrBlank()) {
+                if (builder.isNotEmpty()) builder.append("\n")
+                builder.append(txt)
+            }
+            collectAllChildText(child, builder)
+        }
     }
 }
 

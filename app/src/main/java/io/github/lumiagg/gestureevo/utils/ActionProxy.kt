@@ -192,6 +192,13 @@ class ActionProxy(private val context: Context, linkString: String) {
 
             GestureActionType.ACC_ACTION -> {
                 val action = link.getQueryParameter("accAction")?.toInt() ?: return
+                // === CUSTOM EXTENSION START ===
+                if (action == AccessibilityService.GLOBAL_ACTION_BACK &&
+                    io.github.lumiagg.gestureevo.custom.xposed.XposedBridgeHelper.sendSystemKey(context, android.view.KeyEvent.KEYCODE_BACK)
+                ) {
+                    return
+                }
+                // === CUSTOM EXTENSION END ===
                 if (action == AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT) {
                     // Allow time for the pie menu to dismiss before capturing the screen.
                     delay(500)

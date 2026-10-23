@@ -1,3 +1,9 @@
 <resources>
     <!-- Reply Preference -->
+    <!-- === CUSTOM EXTENSION START === -->
+    <string-array name="xposed_scope">
+        <item>android</item>
+        <item>io.github.lumiagg.gestureevo</item>
+    </string-array>
+    <!-- === CUSTOM EXTENSION END === -->
 </resources>

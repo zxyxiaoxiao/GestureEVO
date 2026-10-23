@@ -2,11 +2,11 @@ package io.github.lumiagg.gestureevo.custom.pointer
 
 import android.accessibilityservice.AccessibilityService
 import android.graphics.Rect
-import android.os.Build
 import android.os.SystemClock
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import io.github.lumiagg.gestureevo.inspire.getNeedWindowsRoot
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,13 +21,13 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 /**
- * 无障碍节点轻量缓存与空间命中管理器
+ * 无障碍节点轻量缓存与空间命中管理器（防遮盖与全量控件几何优化版）
  * 
- * 核心设计：
- * 1. 节流与异步预构建：150ms 节流监听窗口及内容变化事件，推算严密父子交集剪辑边界（clippedBounds）；
- * 2. 扁平化纯内存结构：CachedNode 绝不强引用 AccessibilityNodeInfo，通过 AtomicReference 实现无锁毫秒级原子切换；
- * 3. 毫秒级坐标命中（Hit-Test）：按“面积最小 -> 层级最深”高灵敏定位目标；
- * 4. 稳健反查机制：treePath 快速寻址 + 特征校验（className/ID/bounds容差24px） + 活动窗口整树特征降级回溯。
+ * 核心优化：
+ * 1. 跨窗口 Z-Order 顶层防穿透：按 window.layer 降序严密筛选，悬浮窗展示时绝不穿透到底层全屏应用；
+ * 2. 同窗口内部 Z-Order 遮蔽保护：逆序深度遍历建立图层顺序（zOrder），解决聊天详情覆盖会话列表时的底层穿透问题；
+ * 3. 语义完整控件提升（Semantic Bounds）：当点击/框选中输入框、长文本或聊天气泡内的细微子元素时，自动提升为完整输入框/消息控件边界，确保选中栏与截图 100% 完整对应真实控件；
+ * 4. 纯内存扁平快照：毫秒级原子切换，杜绝长生命周期引用 AccessibilityNodeInfo。
  */
 object NodeCacheManager {
 
@@ -86,23 +86,79 @@ object NodeCacheManager {
         }
     }
 
+    private class WindowMeta(
+        val windowId: Int,
+        val layer: Int,
+        val bounds: Rect,
+        val rootNode: AccessibilityNodeInfo
+    )
+
+    private fun getWindowsRootMeta(service: AccessibilityService): List<WindowMeta> {
+        val result = mutableListOf<WindowMeta>()
+        val actualService = service as? io.github.lumiagg.gestureevo.gesture.GestureService
+            ?: io.github.lumiagg.gestureevo.gesture.GestureService.instance
+            ?: service
+
+        val windows = runCatching { actualService.windows }.getOrNull()
+        if (!windows.isNullOrEmpty()) {
+            for (window in windows) {
+                // 排除无障碍覆盖层（避免自身悬浮球、指针等 Overlay 干扰）
+                if (window.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) continue
+                val root = window.root ?: continue
+                if (root.childCount == 0 && root.text.isNullOrBlank()) continue
+                // 排除本软件自身的界面，防止将自己的视图识别为目标
+                val pkgName = root.packageName?.toString()
+                if (pkgName == "io.github.lumiagg.gestureevo") continue
+
+                val winBounds = Rect()
+                window.getBoundsInScreen(winBounds)
+                result.add(
+                    WindowMeta(
+                        windowId = window.id,
+                        layer = window.layer,
+                        bounds = winBounds,
+                        rootNode = root
+                    )
+                )
+            }
+        }
+        if (result.isEmpty()) {
+            val activeRoot = runCatching { service.rootInActiveWindow }.getOrNull()
+            if (activeRoot != null) {
+                val dm = service.resources.displayMetrics
+                result.add(
+                    WindowMeta(
+                        windowId = activeRoot.windowId,
+                        layer = 0,
+                        bounds = Rect(0, 0, dm.widthPixels, dm.heightPixels),
+                        rootNode = activeRoot
+                    )
+                )
+            }
+        }
+        // 按 layer 降序排列，图层越高的窗口排在最前面
+        return result.sortedByDescending { it.layer }
+    }
+
     private suspend fun buildNodeCache(service: AccessibilityService) = withContext(Dispatchers.Default) {
         if (!isTracking || !isActive) return@withContext
-        val roots = getWindowsRoots(service)
-        if (roots.isEmpty()) return@withContext
+        val windowMetas = getWindowsRootMeta(service)
+        if (windowMetas.isEmpty()) return@withContext
 
         val displayMetrics = service.resources.displayMetrics
         val screenBounds = Rect(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
 
         val flattenedList = ArrayList<CachedNode>(256)
+        var globalZOrder = 0
 
-        for (root in roots) {
+        for (win in windowMetas) {
             if (!isActive || !isTracking) break
-            val windowId = root.windowId
+            val windowId = win.windowId
+            val windowLayer = win.layer
 
-            // 队列存储元素：节点、深度、从根节点到该节点的索引路径、父级剪辑边界
+            // 队列存储元素：节点、深度、从根节点到该节点的索引路径、父级剪辑边界、所属语义控件祖先边界
             val queue = ArrayDeque<TraversalItem>()
-            queue.add(TraversalItem(root, 0, intArrayOf(), screenBounds))
+            queue.add(TraversalItem(win.rootNode, 0, intArrayOf(), screenBounds, null))
 
             while (queue.isNotEmpty() && isActive && isTracking) {
                 val item = queue.removeFirst()
@@ -110,6 +166,7 @@ object NodeCacheManager {
                 val depth = item.depth
                 val currentPath = item.path
                 val parentClip = item.parentClip
+                val inheritedSemanticBounds = item.inheritedSemanticBounds
 
                 val nodeBounds = Rect()
                 node.getBoundsInScreen(nodeBounds)
@@ -118,14 +175,26 @@ object NodeCacheManager {
                 val hasIntersection = effectiveClip.intersect(nodeBounds)
 
                 val isVisible = node.isVisibleToUser && hasIntersection && !nodeBounds.isEmpty
+                val className = node.className?.toString().orEmpty()
+                val text = node.text?.toString()
+                val isEditable = node.isEditable || className.contains("EditText", ignoreCase = true)
+
+                // 推算当前节点的语义边界：若为完整输入框或长文本控件，则确立为语义基准边界
+                val isSemanticContainer = isEditable || 
+                    (className.contains("TextView", ignoreCase = true) && !text.isNullOrBlank()) ||
+                    (node.isClickable && !text.isNullOrBlank())
+
+                val currentSemanticBounds = if (isSemanticContainer) {
+                    Rect(nodeBounds)
+                } else {
+                    inheritedSemanticBounds ?: Rect(nodeBounds)
+                }
 
                 if (isVisible) {
                     val area = nodeBounds.width().toLong() * nodeBounds.height().toLong()
                     if (area > 0) {
                         val viewId = runCatching { node.viewIdResourceName }.getOrNull()
-                        val className = node.className?.toString().orEmpty()
-                        val text = node.text?.toString()
-                        val isEditable = node.isEditable
+                        globalZOrder++
 
                         flattenedList.add(
                             CachedNode(
@@ -139,7 +208,10 @@ object NodeCacheManager {
                                 area = area,
                                 isVisible = true,
                                 isEditable = isEditable,
-                                cachedText = text
+                                cachedText = text,
+                                windowLayer = windowLayer,
+                                zOrder = globalZOrder,
+                                semanticBounds = currentSemanticBounds
                             )
                         )
                     }
@@ -147,14 +219,16 @@ object NodeCacheManager {
 
                 val childCount = node.childCount
                 val nextClip = if (hasIntersection) effectiveClip else parentClip
-                for (i in 0 until childCount) {
+
+                // 逆序加入队列：同一父级下索引大的子控件后绘制（位于更上层）
+                for (i in childCount - 1 downTo 0) {
                     val child = runCatching { node.getChild(i) }.getOrNull() ?: continue
                     if (child.isVisibleToUser) {
                         val childPath = IntArray(currentPath.size + 1).apply {
                             System.arraycopy(currentPath, 0, this, 0, currentPath.size)
                             this[currentPath.size] = i
                         }
-                        queue.add(TraversalItem(child, depth + 1, childPath, nextClip))
+                        queue.add(TraversalItem(child, depth + 1, childPath, nextClip, currentSemanticBounds))
                     }
                 }
             }
@@ -170,26 +244,40 @@ object NodeCacheManager {
         val node: AccessibilityNodeInfo,
         val depth: Int,
         val path: IntArray,
-        val parentClip: Rect
+        val parentClip: Rect,
+        val inheritedSemanticBounds: Rect?
     )
 
     /**
-     * 毫秒级坐标命中测试：
-     * 筛选 isVisible 且 clippedBounds 包含 (x, y) 的节点，按“面积最小 -> 层级最深”返回最优目标
+     * 毫秒级坐标命中测试（防穿透与顶层优先）
      */
     fun hitTest(x: Int, y: Int): CachedNode? {
         val currentSnapshot = cacheReference.get()
         if (currentSnapshot.isEmpty()) return null
 
-        val matched = currentSnapshot.filter { node ->
-            node.isVisible && node.clippedBounds.contains(x, y) && node.area > 0
-        }
-        if (matched.isEmpty()) return null
+        // 1. 跨窗口层级探测：按 windowLayer 从高到低（最顶层优先）严格筛选
+        val windowsByLayer = currentSnapshot
+            .groupBy { it.windowLayer }
+            .entries
+            .sortedByDescending { it.key }
 
-        return matched.minWithOrNull(
-            compareBy<CachedNode> { it.area }
-                .thenByDescending { it.depth }
-        )
+        for ((_, nodesInWindow) in windowsByLayer) {
+            val matchedInTopWindow = nodesInWindow.filter { node ->
+                node.isVisible && node.clippedBounds.contains(x, y) && node.area > 0
+            }
+            if (matchedInTopWindow.isNotEmpty()) {
+                // 成功在当前最顶层可见窗口命中！绝不穿透到下层被遮盖的窗口
+                // 2. 同窗口内顶层优先：优先选取具有有效文本/输入框的表层控件
+                val textNodes = matchedInTopWindow.filter { !it.cachedText.isNullOrBlank() || it.isEditable }
+                val candidates = if (textNodes.isNotEmpty()) textNodes else matchedInTopWindow
+
+                return candidates.maxWithOrNull(
+                    compareBy<CachedNode> { it.zOrder }
+                        .thenBy { -it.area }
+                ) ?: matchedInTopWindow.minByOrNull { it.area }
+            }
+        }
+        return null
     }
 
     /**
@@ -202,42 +290,48 @@ object NodeCacheManager {
         val currentSnapshot = cacheReference.get()
         if (currentSnapshot.isEmpty()) return null
 
-        val matched = currentSnapshot.filter { node ->
-            node.isVisible && Rect.intersects(node.clippedBounds, rect) && node.area > 0
-        }
-        if (matched.isEmpty()) return null
+        val windowsByLayer = currentSnapshot
+            .groupBy { it.windowLayer }
+            .entries
+            .sortedByDescending { it.key }
 
-        return matched.minWithOrNull(
-            compareBy<CachedNode> { it.area }
-                .thenByDescending { it.depth }
-        )
+        for ((_, nodesInWindow) in windowsByLayer) {
+            val matchedInTopWindow = nodesInWindow.filter { node ->
+                node.isVisible && Rect.intersects(node.clippedBounds, rect) && node.area > 0
+            }
+            if (matchedInTopWindow.isNotEmpty()) {
+                val textNodes = matchedInTopWindow.filter { !it.cachedText.isNullOrBlank() || it.isEditable }
+                val candidates = if (textNodes.isNotEmpty()) textNodes else matchedInTopWindow
+
+                return candidates.maxWithOrNull(
+                    compareBy<CachedNode> { it.zOrder }
+                        .thenBy { -it.area }
+                ) ?: matchedInTopWindow.minByOrNull { it.area }
+            }
+        }
+        return null
     }
 
     /**
-     * 返回目标矩形（兼容原旧接口）
+     * 返回目标矩形（严格返回提升后的语义完整控件边界，确保输入框/整条消息全量框选与截图）
      */
-    fun hitTestRect(x: Int, y: Int): Rect? = hitTest(x, y)?.boundsInScreen
+    fun hitTestRect(x: Int, y: Int): Rect? = hitTest(x, y)?.semanticBounds
 
-    fun hitTestRect(rect: Rect): Rect? = hitTest(rect)?.boundsInScreen
+    fun hitTestRect(rect: Rect): Rect? = hitTest(rect)?.semanticBounds
 
     /**
-     * 真实节点反查：
-     * 优先通过 windowId + treePath 定位候选节点；
-     * 必须校验 className + viewIdResourceName + boundsInScreen（24px 容差）；
-     * 校验失败立即降级为在当前活动窗口中按特征遍历匹配。
-     * 
-     * 注意：返回的 AccessibilityNodeInfo 必须用完即释放，严禁外部长期强引用缓存。
+     * 真实节点反查
      */
     fun findRealNode(service: AccessibilityService, cachedNode: CachedNode): AccessibilityNodeInfo? {
-        val roots = getWindowsRoots(service)
-        if (roots.isEmpty()) {
+        val metas = getWindowsRootMeta(service)
+        if (metas.isEmpty()) {
             return service.rootInActiveWindow?.let { root ->
                 matchByFeatures(root, cachedNode)
             }
         }
 
         // 1. 尝试在对应 windowId 的根节点下按 treePath 高速索引寻址
-        val targetRoot = roots.find { it.windowId == cachedNode.windowId } ?: roots.firstOrNull()
+        val targetRoot = metas.find { it.windowId == cachedNode.windowId }?.rootNode ?: metas.firstOrNull()?.rootNode
         if (targetRoot != null) {
             val candidate = navigateByTreePath(targetRoot, cachedNode.treePath)
             if (candidate != null && validateCandidateNode(candidate, cachedNode)) {
@@ -246,8 +340,8 @@ object NodeCacheManager {
         }
 
         // 2. treePath 寻址校验失败，全树降级特征扫描
-        for (root in roots) {
-            val found = matchByFeatures(root, cachedNode)
+        for (meta in metas) {
+            val found = matchByFeatures(meta.rootNode, cachedNode)
             if (found != null) {
                 return found
             }
@@ -270,19 +364,16 @@ object NodeCacheManager {
     }
 
     private fun validateCandidateNode(candidate: AccessibilityNodeInfo, cachedNode: CachedNode): Boolean {
-        // 校验类名
         val className = candidate.className?.toString().orEmpty()
         if (cachedNode.className.isNotEmpty() && className != cachedNode.className) {
             return false
         }
 
-        // 校验 View ID（若缓存记录存在）
         val viewId = runCatching { candidate.viewIdResourceName }.getOrNull()
         if (!cachedNode.viewIdResourceName.isNullOrEmpty() && viewId != cachedNode.viewIdResourceName) {
             return false
         }
 
-        // 校验屏幕边界容差（24px 容差以内）
         val candidateBounds = Rect()
         candidate.getBoundsInScreen(candidateBounds)
         val cachedBounds = cachedNode.boundsInScreen
@@ -343,19 +434,5 @@ object NodeCacheManager {
             }
         }
         return fallbackMatch
-    }
-
-    private fun getWindowsRoots(service: AccessibilityService): List<AccessibilityNodeInfo> {
-        if (service is io.github.lumiagg.gestureevo.gesture.GestureService) {
-            val list = runCatching { getNeedWindowsRoot(service) }.getOrNull()
-            if (!list.isNullOrEmpty()) return list
-        }
-        val gestureService = io.github.lumiagg.gestureevo.gesture.GestureService.instance
-        if (gestureService != null) {
-            val list = runCatching { getNeedWindowsRoot(gestureService) }.getOrNull()
-            if (!list.isNullOrEmpty()) return list
-        }
-        val activeRoot = runCatching { service.rootInActiveWindow }.getOrNull()
-        return if (activeRoot != null) listOf(activeRoot) else emptyList()
     }
 }

@@ -476,6 +476,12 @@ class GestureManager(
                 }
                 if (!actionExecuted) {
                     actionExecuted = true
+                    // === CUSTOM EXTENSION START ===
+                    if (pointerFloatingLazy.isInitialized() && pointerFloating.enable) {
+                        pointerFloating.pointerManger.exitDragMode()
+                        pointerFloating.hide()
+                    }
+                    // === CUSTOM EXTENSION END ===
                     executeAction(triggerView, gestureTypeEvent, event)
                 }
             }

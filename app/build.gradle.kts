@@ -17,8 +17,8 @@ android {
         applicationId = "io.github.lumiagg.gestureevo"
         minSdk = 24
         targetSdk = 36
-        versionCode = 261017001
-        versionName = "2G-0.1.1"
+        versionCode = 261017002
+        versionName = "2G-0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -182,6 +182,7 @@ dependencies {
     implementation(libs.zxing.core)
     implementation(libs.sardine.android)
     implementation("com.google.mlkit:text-recognition-chinese:16.0.1")
+    compileOnly("de.robv.android.xposed:api:82")
 
     testImplementation(libs.junit)
     testImplementation(libs.kxml2)

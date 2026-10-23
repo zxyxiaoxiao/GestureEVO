@@ -32,6 +32,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GestureEVO"
         tools:targetApi="34">
+        <!-- === CUSTOM EXTENSION START === -->
+        <meta-data
+            android:name="xposedmodule"
+            android:value="true" />
+        <meta-data
+            android:name="xposeddescription"
+            android:value="GestureEVO Xposed增强：提供免无障碍系统级瞬时手势与操作支持" />
+        <meta-data
+            android:name="xposedminversion"
+            android:value="54" />
+        <meta-data
+            android:name="xposedscope"
+            android:resource="@array/xposed_scope" />
+        <!-- === CUSTOM EXTENSION END === -->
         <activity
             android:name=".utils.NotificationPermissionPromptActivity"
             android:excludeFromRecents="true"
